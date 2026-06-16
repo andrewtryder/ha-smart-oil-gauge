@@ -6,9 +6,10 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![validate](https://github.com/andrewtryder/ha-smart-oil-gauge/actions/workflows/validate.yml/badge.svg?style=for-the-badge)](https://github.com/andrewtryder/ha-smart-oil-gauge/actions/workflows/validate.yml)
-[![release](https://img.shields.io/github/v/tag/andrewtryder/ha-smart-oil-gauge?label=release&style=for-the-badge)](https://github.com/andrewtryder/ha-smart-oil-gauge/releases)
-[![downloads](https://img.shields.io/github/downloads/andrewtryder/ha-smart-oil-gauge/total.svg?style=for-the-badge)](https://github.com/andrewtryder/ha-smart-oil-gauge/releases)
-[![license](https://img.shields.io/github/license/andrewtryder/ha-smart-oil-gauge?style=for-the-badge)](https://github.com/andrewtryder/ha-smart-oil-gauge/blob/main/LICENSE)
+[![release](https://badgen.net/github/tag/andrewtryder/ha-smart-oil-gauge?color=blue&label=release)](https://github.com/andrewtryder/ha-smart-oil-gauge/releases)
+[![downloads](https://badgen.net/github/assets-dl/andrewtryder/ha-smart-oil-gauge?color=green&label=downloads)](https://github.com/andrewtryder/ha-smart-oil-gauge/releases)
+[![license](https://badgen.net/github/license/andrewtryder/ha-smart-oil-gauge?color=yellow)](https://github.com/andrewtryder/ha-smart-oil-gauge/blob/main/LICENSE)
+
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-smart-oil-gauge&category=integration)
 
 
