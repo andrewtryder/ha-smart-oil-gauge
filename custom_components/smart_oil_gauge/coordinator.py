@@ -40,7 +40,6 @@ class SmartOilGaugeDataUpdateCoordinator(DataUpdateCoordinator[list[dict[str, An
             update_interval=timedelta(hours=update_interval_hours),
         )
 
-
     async def _async_update_data(self) -> list[dict[str, Any]]:
         """Update data via client."""
         try:

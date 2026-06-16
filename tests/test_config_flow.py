@@ -127,24 +127,30 @@ async def test_flow_user_unknown_exception(hass: HomeAssistant) -> None:
 
 async def test_validate_input(hass: HomeAssistant) -> None:
     """Test validate_input helper."""
-    with patch(
-        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_login",
-        return_value=True,
-    ), patch(
-        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
-        return_value=[{"tank_name": "House Tank"}],
+    with (
+        patch(
+            "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_login",
+            return_value=True,
+        ),
+        patch(
+            "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+            return_value=[{"tank_name": "House Tank"}],
+        ),
     ):
         res = await validate_input(
             hass, {CONF_USERNAME: "test@example.com", CONF_PASSWORD: "password"}
         )
         assert res == {"title": "House Tank"}
 
-    with patch(
-        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_login",
-        return_value=True,
-    ), patch(
-        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
-        return_value=[],
+    with (
+        patch(
+            "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_login",
+            return_value=True,
+        ),
+        patch(
+            "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+            return_value=[],
+        ),
     ):
         res = await validate_input(
             hass, {CONF_USERNAME: "test@example.com", CONF_PASSWORD: "password"}
