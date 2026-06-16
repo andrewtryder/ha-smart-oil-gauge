@@ -101,6 +101,12 @@ class SmartOilGaugeClient:
     async def async_get_tanks(self, retry_login: bool = True) -> list:
         """Fetch list of tanks and their metrics."""
         _LOGGER.debug("Requesting tanks list via AJAX")
+
+        # If no session cookies are present, log in first
+        if not any(cookie.key == "PHPSESSID" for cookie in self._session.cookie_jar):
+            _LOGGER.info("No session cookie found in cookie jar. Logging in first.")
+            await self.async_login()
+
         ajax_payload = {
             "action": "get_tanks_list",
             "tank_id": "0",
@@ -138,10 +144,12 @@ class SmartOilGaugeClient:
                     _LOGGER.error("AJAX response is not JSON: %s", text[:500])
                     raise CannotConnect("Invalid JSON response from server") from ex
 
-                # Handle Access Denied (session expired)
-                if data.get("result") == "error" and "Access Denied" in data.get(
-                    "message", ""
-                ):
+                # Handle Access Denied or 401 (session expired/unauthorized)
+                is_unauthorized = (
+                    data.get("result") == "error"
+                    and "Access Denied" in data.get("message", "")
+                ) or data.get("Status") == 401
+                if is_unauthorized:
                     if retry_login:
                         _LOGGER.info(
                             "Session expired or unauthorized. Retrying login..."

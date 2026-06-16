@@ -144,6 +144,8 @@ async def test_async_get_tanks_success(aresponses: ResponsesMockServer) -> None:
 
     async with aiohttp.ClientSession() as session:
         client = SmartOilGaugeClient(session, "test@example.com", "password")
+        # Pre-populate session cookie to simulate logged-in state
+        client._session.cookie_jar.update_cookies({"PHPSESSID": "test_session_id"})
         tanks = await client.async_get_tanks()
         assert len(tanks) == 1
         assert tanks[0]["tank_name"] == "Test Tank"
@@ -206,6 +208,8 @@ async def test_async_get_tanks_session_expiry_relogin(
 
     async with aiohttp.ClientSession() as session:
         client = SmartOilGaugeClient(session, "test@example.com", "password")
+        # Pre-populate session cookie to simulate expired logged-in state
+        client._session.cookie_jar.update_cookies({"PHPSESSID": "expired_session_id"})
         tanks = await client.async_get_tanks()
         assert len(tanks) == 1
         assert tanks[0]["tank_id"] == "12345"
