@@ -1,5 +1,13 @@
 # Smart Oil Gauge integration for Home Assistant
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![validate](https://github.com/andrewtryder/ha-smart-oil-gauge/actions/workflows/validate.yml/badge.svg?style=for-the-badge)](https://github.com/andrewtryder/ha-smart-oil-gauge/actions/workflows/validate.yml)
+[![release](https://img.shields.io/github/v/release/andrewtryder/ha-smart-oil-gauge?style=for-the-badge)](https://github.com/andrewtryder/ha-smart-oil-gauge/releases)
+[![license](https://img.shields.io/github/license/andrewtryder/ha-smart-oil-gauge?style=for-the-badge)](https://github.com/andrewtryder/ha-smart-oil-gauge/blob/main/LICENSE)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&style=for-the-badge)](https://github.com/pre-commit/pre-commit)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-smart-oil-gauge&category=integration)
+
+
 A HACS-compatible Home Assistant custom integration for the **Smart Oil Gauge** by Connected Consumer Fuel. This integration logs into the Smart Oil Gauge web portal, retrieves the current tank data via AJAX, and registers the tank as a device with associated sensors.
 
 ## Features
