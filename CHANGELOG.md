@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.1.1...v1.1.2) (2026-06-16)
+
+
+### Bug Fixes
+
+* enforce initial login and handle AJAX 401 response status ([7049fcc](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/7049fcc73daa53f2fe3a54b8fd937132a451b96c))
+
 ## [1.1.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.1.0...v1.1.1) (2026-06-16)
 
 
