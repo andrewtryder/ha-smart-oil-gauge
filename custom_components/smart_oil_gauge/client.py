@@ -148,7 +148,11 @@ class SmartOilGaugeClient:
 
                 if data.get("result") != "ok":
                     error_msg = data.get("message", "Unknown error")
-                    _LOGGER.error("AJAX returned error result: %s", error_msg)
+                    _LOGGER.error(
+                        "AJAX returned error result: %s. Full response: %s",
+                        error_msg,
+                        data,
+                    )
                     raise SmartOilGaugeException(f"Error from server: {error_msg}")
 
                 tanks = data.get("tanks", [])
