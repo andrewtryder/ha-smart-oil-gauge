@@ -1,0 +1,15 @@
+{
+  "domain": "smart_oil_gauge",
+  "name": "Smart Oil Gauge",
+  "codeowners": [
+    "@andrewtryder"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/andrewtryder/ha-smart-oil-gauge",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/andrewtryder/ha-smart-oil-gauge/issues",
+  "requirements": [
+    "beautifulsoup4>=4.12.0"
+  ],
+  "version": "1.0.0"
+}

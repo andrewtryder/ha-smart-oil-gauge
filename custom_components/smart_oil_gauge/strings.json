@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Smart Oil Gauge Login",
+        "description": "Please enter your Smart Oil Gauge username (email) and password.",
+        "data": {
+          "username": "Email Address",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the Smart Oil Gauge portal.",
+      "invalid_auth": "Invalid email or password.",
+      "unknown": "Unexpected error occurred."
+    }
+  }
+}
