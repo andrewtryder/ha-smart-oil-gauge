@@ -86,6 +86,13 @@ async def test_sensors_success(hass: HomeAssistant) -> None:
         assert battery_state.state == "Excellent"
         assert battery_state.attributes["icon"] == "mdi:battery"
 
+        # Check Last Checked Sensor
+        last_checked_state = hass.states.get("sensor.main_house_tank_last_checked")
+        assert last_checked_state is not None
+        assert last_checked_state.state != "unknown"
+        assert last_checked_state.attributes["device_class"] == "timestamp"
+        assert last_checked_state.attributes["icon"] == "mdi:clock-outline"
+
 
 async def test_sensors_model_fallback(hass: HomeAssistant) -> None:
     """Test level sensor falls back to model_gallons when sensor_gallons is None."""

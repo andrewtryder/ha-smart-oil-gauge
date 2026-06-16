@@ -8,6 +8,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .client import (
     CannotConnect,
@@ -26,6 +27,7 @@ class SmartOilGaugeDataUpdateCoordinator(DataUpdateCoordinator[list[dict[str, An
     def __init__(self, hass: HomeAssistant, client: SmartOilGaugeClient) -> None:
         """Initialize."""
         self.client = client
+        self.last_successful_update = None
         super().__init__(
             hass,
             _LOGGER,
@@ -38,7 +40,9 @@ class SmartOilGaugeDataUpdateCoordinator(DataUpdateCoordinator[list[dict[str, An
         try:
             # Fetch tanks list. The client handles automatic login
             # and retries if needed.
-            return await self.client.async_get_tanks()
+            data = await self.client.async_get_tanks()
+            self.last_successful_update = dt_util.utcnow()
+            return data
         except CannotConnect as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
         except InvalidAuth as err:

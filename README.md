@@ -276,6 +276,8 @@ entities:
     name: Consumption Rate
   - entity: sensor.house_tank_battery
     name: Gauge Battery
+  - entity: sensor.house_tank_last_checked
+    name: Last Checked
 ```
 
 ### Tracking Total Fuel Consumed Historically

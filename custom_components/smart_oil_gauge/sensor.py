@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from homeassistant.components.sensor import (
+    SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
@@ -54,6 +56,7 @@ async def async_setup_entry(
                 SmartOilGaugePercentageSensor(coordinator, tank_id, tank_name),
                 SmartOilGaugeBatterySensor(coordinator, tank_id, tank_name),
                 SmartOilGaugeDailyUsageRateSensor(coordinator, tank_id, tank_name),
+                SmartOilGaugeLastCheckedSensor(coordinator, tank_id, tank_name),
             ]
         )
 
@@ -224,3 +227,27 @@ class SmartOilGaugeDailyUsageRateSensor(SmartOilGaugeEntity, SensorEntity):
         except ValueError:
             _LOGGER.warning("Could not convert daily usage rate '%s' to float", usg)
             return None
+
+
+class SmartOilGaugeLastCheckedSensor(SmartOilGaugeEntity, SensorEntity):
+    """Sensor for the last time the gauge was successfully checked."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:clock-outline"
+
+    def __init__(
+        self,
+        coordinator: SmartOilGaugeDataUpdateCoordinator,
+        tank_id: str,
+        tank_name: str,
+    ) -> None:
+        """Initialize last checked sensor."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_name = "Last Checked"
+        self._attr_unique_id = f"{tank_id}_last_checked"
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the state of the sensor."""
+        return self.coordinator.last_successful_update
