@@ -24,7 +24,12 @@ _LOGGER = logging.getLogger(__name__)
 class SmartOilGaugeDataUpdateCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
     """Class to manage fetching Smart Oil Gauge data."""
 
-    def __init__(self, hass: HomeAssistant, client: SmartOilGaugeClient) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: SmartOilGaugeClient,
+        update_interval_hours: int,
+    ) -> None:
         """Initialize."""
         self.client = client
         self.last_successful_update = None
@@ -32,7 +37,7 @@ class SmartOilGaugeDataUpdateCoordinator(DataUpdateCoordinator[list[dict[str, An
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(hours=6),
+            update_interval=timedelta(hours=update_interval_hours),
         )
 
     async def _async_update_data(self) -> list[dict[str, Any]]:
