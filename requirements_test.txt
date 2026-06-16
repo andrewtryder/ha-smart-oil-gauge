@@ -5,3 +5,16 @@ pytest-asyncio
 aresponses
 ruff
 pre-commit
+h11>=0.16.0 # not directly required, pinned by Snyk to avoid a vulnerability
+jsonpickle>=3.3.0 # not directly required, pinned by Snyk to avoid a vulnerability
+homeassistant>=2023.3.0 # not directly required, pinned by Snyk to avoid a vulnerability
+urllib3>=1.26.19 # not directly required, pinned by Snyk to avoid a vulnerability
+pyjwt>=2.4.0 # not directly required, pinned by Snyk to avoid a vulnerability
+aiohttp>=3.9.0 # not directly required, pinned by Snyk to avoid a vulnerability
+anyio>=4.4.0 # not directly required, pinned by Snyk to avoid a vulnerability
+cryptography>=3.3.2 # not directly required, pinned by Snyk to avoid a vulnerability
+pylint>=2.6.1 # not directly required, pinned by Snyk to avoid a vulnerability
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
+requests>=2.32.2 # not directly required, pinned by Snyk to avoid a vulnerability
+idna>=3.15 # not directly required, pinned by Snyk to avoid a vulnerability
+tqdm>=4.66.3 # not directly required, pinned by Snyk to avoid a vulnerability
