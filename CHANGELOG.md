@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.2.0...v1.2.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* requirements_test.txt to reduce vulnerabilities ([25c4eac](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/25c4eac4702fb3b5692ceeaf0e250a61e84385ec))
+
 ## [1.2.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.1.3...v1.2.0) (2026-06-16)
 
 
