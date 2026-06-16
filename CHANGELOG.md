@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.3.0...v1.4.0) (2026-06-16)
+
+
+### Features
+
+* add dynamic tank naming, configurable check intervals, and new … ([5252a98](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/5252a98770816829c7adbb2dec6de2fadd424849))
+* add dynamic tank naming, configurable check intervals, and new sensors ([5cd3656](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/5cd36567558a98265d9bc9abccdc830f024a3d78))
+
 ## [1.3.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.2.1...v1.3.0) (2026-06-16)
 
 
