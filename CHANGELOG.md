@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.2.1...v1.3.0) (2026-06-16)
+
+
+### Features
+
+* add Last Checked timestamp sensor ([9998a7b](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/9998a7bf45f0c09265cd4a6755df209e2b8676b2))
+
 ## [1.2.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.2.0...v1.2.1) (2026-06-16)
 
 
