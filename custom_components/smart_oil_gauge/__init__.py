@@ -10,7 +10,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .client import SmartOilGaugeClient
-from .const import DOMAIN, USER_AGENT
+from .const import (
+    CONF_UPDATE_INTERVAL_HOURS,
+    DEFAULT_UPDATE_INTERVAL_HOURS,
+    DOMAIN,
+    USER_AGENT,
+)
 from .coordinator import SmartOilGaugeDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,7 +36,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         session, entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD]
     )
 
-    coordinator = SmartOilGaugeDataUpdateCoordinator(hass, client)
+    update_interval_hours = entry.options.get(
+        CONF_UPDATE_INTERVAL_HOURS,
+        entry.data.get(CONF_UPDATE_INTERVAL_HOURS, DEFAULT_UPDATE_INTERVAL_HOURS),
+    )
+
+    coordinator = SmartOilGaugeDataUpdateCoordinator(
+        hass, client, update_interval_hours
+    )
 
     # Initial data fetch during setup
     await coordinator.async_config_entry_first_refresh()
@@ -43,7 +55,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+
     return True
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry when options are updated."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -52,3 +71,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
