@@ -2,6 +2,7 @@
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "--cov=custom_components/smart_oil_gauge --cov-report=term-missing"
+pythonpath = ["."]
 
 [tool.ruff]
 target-version = "py312"
