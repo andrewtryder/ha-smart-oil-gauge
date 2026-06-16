@@ -3,15 +3,12 @@ import logging
 import aiohttp
 from bs4 import BeautifulSoup
 
+from .const import USER_AGENT
+
 _LOGGER = logging.getLogger(__name__)
 
 LOGIN_URL = "https://app.smartoilgauge.com/login.php"
 AJAX_URL = "https://app.smartoilgauge.com/ajax/main_ajax.php"
-USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
-)
 
 
 class SmartOilGaugeException(Exception):

@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .client import SmartOilGaugeClient
-from .const import DOMAIN
+from .const import DOMAIN, USER_AGENT
 from .coordinator import SmartOilGaugeDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Smart Oil Gauge from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    session = async_create_clientsession(hass)
+    session = async_create_clientsession(hass, headers={"User-Agent": USER_AGENT})
     client = SmartOilGaugeClient(
         session, entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD]
     )

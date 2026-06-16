@@ -13,7 +13,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .client import CannotConnect, InvalidAuth, SmartOilGaugeClient
-from .const import DOMAIN
+from .const import DOMAIN, USER_AGENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
     # Create a new session for validation
-    session = async_create_clientsession(hass)
+    session = async_create_clientsession(hass, headers={"User-Agent": USER_AGENT})
     client = SmartOilGaugeClient(session, data[CONF_USERNAME], data[CONF_PASSWORD])
 
     # Validate login and fetch tanks list
