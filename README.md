@@ -15,6 +15,10 @@
 
 A HACS-compatible Home Assistant custom integration for the **Smart Oil Gauge** by Connected Consumer Fuel. This integration logs into the Smart Oil Gauge web portal, retrieves the current tank data via AJAX, and registers the tank as a device with associated sensors.
 
+<p align="center">
+  <img src="images/device_card.png" alt="Smart Oil Gauge Device Card" width="600">
+</p>
+
 ## Features
 
 - **Oil Level Sensor** (`sensor.oil_tank_level`): Remaining fuel level in gallons (preferring physical sensor readings and falling back to model estimates).
