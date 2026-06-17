@@ -1,3 +1,5 @@
+"""Client module for the Smart Oil Gauge integration."""
+
 import logging
 
 import aiohttp
