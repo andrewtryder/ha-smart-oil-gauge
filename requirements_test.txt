@@ -2,6 +2,5 @@ pytest
 pytest-homeassistant-custom-component
 pytest-cov
 pytest-asyncio
-aioresponses
 ruff
 pre-commit
