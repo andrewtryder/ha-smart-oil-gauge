@@ -4,7 +4,7 @@ import json
 
 import aiohttp
 import pytest
-from aresponses import ResponsesMockServer
+from aioresponses import aioresponses
 
 from custom_components.smart_oil_gauge.client import (
     CannotConnect,
@@ -14,6 +14,14 @@ from custom_components.smart_oil_gauge.client import (
 )
 
 pytestmark = pytest.mark.enable_socket
+
+
+@pytest.fixture
+def aioresponses_mock():
+    """Fixture for aioresponses."""
+    with aioresponses() as m:
+        yield m
+
 
 LOGIN_HTML_SUCCESS = """
 <!doctype html>
@@ -40,31 +48,23 @@ LOGIN_HTML_ERROR = """
 
 
 @pytest.mark.asyncio
-async def test_async_login_success(aresponses: ResponsesMockServer) -> None:
+async def test_async_login_success(aioresponses_mock: aioresponses) -> None:
     """Test successful login sequence."""
     # Mock GET login page
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/login.php",
-        "GET",
-        aresponses.Response(text=LOGIN_HTML_SUCCESS, status=200),
+    aioresponses_mock.get(
+        "https://app.smartoilgauge.com/login.php", body=LOGIN_HTML_SUCCESS, status=200
     )
     # Mock POST login submission returning a 302 Redirect to app.php
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/login.php",
-        "POST",
-        aresponses.Response(
-            status=302,
-            headers={"Location": "https://app.smartoilgauge.com/app.php"},
-        ),
+    aioresponses_mock.post(
+        "https://app.smartoilgauge.com/login.php",
+        status=302,
+        headers={"Location": "https://app.smartoilgauge.com/app.php"},
     )
     # Mock GET app.php landing page after redirect
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/app.php",
-        "GET",
-        aresponses.Response(text="Welcome to the dashboard", status=200),
+    aioresponses_mock.get(
+        "https://app.smartoilgauge.com/app.php",
+        body="Welcome to the dashboard",
+        status=200,
     )
 
     async with aiohttp.ClientSession() as session:
@@ -73,23 +73,16 @@ async def test_async_login_success(aresponses: ResponsesMockServer) -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_login_invalid_credentials(aresponses: ResponsesMockServer) -> None:
+async def test_async_login_invalid_credentials(aioresponses_mock: aioresponses) -> None:
     """Test login failure due to invalid credentials."""
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/login.php",
-        "GET",
-        aresponses.Response(text=LOGIN_HTML_SUCCESS, status=200),
+    aioresponses_mock.get(
+        "https://app.smartoilgauge.com/login.php", body=LOGIN_HTML_SUCCESS, status=200
     )
     # Return HTML containing app_error (remains on login.php)
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/login.php",
-        "POST",
-        aresponses.Response(
-            text=LOGIN_HTML_ERROR,
-            status=200,
-        ),
+    aioresponses_mock.post(
+        "https://app.smartoilgauge.com/login.php",
+        body=LOGIN_HTML_ERROR,
+        status=200,
     )
 
     async with aiohttp.ClientSession() as session:
@@ -99,14 +92,9 @@ async def test_async_login_invalid_credentials(aresponses: ResponsesMockServer) 
 
 
 @pytest.mark.asyncio
-async def test_async_login_cannot_connect(aresponses: ResponsesMockServer) -> None:
+async def test_async_login_cannot_connect(aioresponses_mock: aioresponses) -> None:
     """Test login failure due to connection error."""
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/login.php",
-        "GET",
-        aresponses.Response(status=500),
-    )
+    aioresponses_mock.get("https://app.smartoilgauge.com/login.php", status=500)
 
     async with aiohttp.ClientSession() as session:
         client = SmartOilGaugeClient(session, "test@example.com", "password")
@@ -115,7 +103,7 @@ async def test_async_login_cannot_connect(aresponses: ResponsesMockServer) -> No
 
 
 @pytest.mark.asyncio
-async def test_async_get_tanks_success(aresponses: ResponsesMockServer) -> None:
+async def test_async_get_tanks_success(aioresponses_mock: aioresponses) -> None:
     """Test successful retrieval of tanks list."""
     mock_tanks_response = {
         "result": "ok",
@@ -131,15 +119,11 @@ async def test_async_get_tanks_success(aresponses: ResponsesMockServer) -> None:
         ],
     }
 
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/ajax/main_ajax.php",
-        "POST",
-        aresponses.Response(
-            text=json.dumps(mock_tanks_response),
-            content_type="application/json",
-            status=200,
-        ),
+    aioresponses_mock.post(
+        "https://app.smartoilgauge.com/ajax/main_ajax.php",
+        body=json.dumps(mock_tanks_response),
+        headers={"Content-Type": "application/json"},
+        status=200,
     )
 
     async with aiohttp.ClientSession() as session:
@@ -154,56 +138,38 @@ async def test_async_get_tanks_success(aresponses: ResponsesMockServer) -> None:
 
 @pytest.mark.asyncio
 async def test_async_get_tanks_session_expiry_relogin(
-    aresponses: ResponsesMockServer,
+    aioresponses_mock: aioresponses,
 ) -> None:
     """Test auto-relogin when session is expired (Access Denied)."""
     # 1. Return Access Denied error on first fetch
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/ajax/main_ajax.php",
-        "POST",
-        aresponses.Response(
-            text=json.dumps({"result": "error", "message": "Access Denied"}),
-            content_type="application/json",
-            status=200,
-        ),
+    aioresponses_mock.post(
+        "https://app.smartoilgauge.com/ajax/main_ajax.php",
+        body=json.dumps({"result": "error", "message": "Access Denied"}),
+        headers={"Content-Type": "application/json"},
+        status=200,
     )
     # 2. Mock login sequence (GET + POST + GET app.php)
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/login.php",
-        "GET",
-        aresponses.Response(text=LOGIN_HTML_SUCCESS, status=200),
+    aioresponses_mock.get(
+        "https://app.smartoilgauge.com/login.php", body=LOGIN_HTML_SUCCESS, status=200
     )
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/login.php",
-        "POST",
-        aresponses.Response(
-            status=302,
-            headers={"Location": "https://app.smartoilgauge.com/app.php"},
-        ),
+    aioresponses_mock.post(
+        "https://app.smartoilgauge.com/login.php",
+        status=302,
+        headers={"Location": "https://app.smartoilgauge.com/app.php"},
     )
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/app.php",
-        "GET",
-        aresponses.Response(text="Welcome", status=200),
+    aioresponses_mock.get(
+        "https://app.smartoilgauge.com/app.php", body="Welcome", status=200
     )
     # 3. Return successful tank list on retry
     mock_tanks_response = {
         "result": "ok",
         "tanks": [{"tank_id": "12345", "tank_name": "Test Tank"}],
     }
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/ajax/main_ajax.php",
-        "POST",
-        aresponses.Response(
-            text=json.dumps(mock_tanks_response),
-            content_type="application/json",
-            status=200,
-        ),
+    aioresponses_mock.post(
+        "https://app.smartoilgauge.com/ajax/main_ajax.php",
+        body=json.dumps(mock_tanks_response),
+        headers={"Content-Type": "application/json"},
+        status=200,
     )
 
     async with aiohttp.ClientSession() as session:
@@ -216,17 +182,13 @@ async def test_async_get_tanks_session_expiry_relogin(
 
 
 @pytest.mark.asyncio
-async def test_async_get_tanks_server_error(aresponses: ResponsesMockServer) -> None:
+async def test_async_get_tanks_server_error(aioresponses_mock: aioresponses) -> None:
     """Test handling of generic server error from AJAX."""
-    aresponses.add(
-        "app.smartoilgauge.com",
-        "/ajax/main_ajax.php",
-        "POST",
-        aresponses.Response(
-            text=json.dumps({"result": "error", "message": "Database error"}),
-            content_type="application/json",
-            status=200,
-        ),
+    aioresponses_mock.post(
+        "https://app.smartoilgauge.com/ajax/main_ajax.php",
+        body=json.dumps({"result": "error", "message": "Database error"}),
+        headers={"Content-Type": "application/json"},
+        status=200,
     )
 
     async with aiohttp.ClientSession() as session:
