@@ -121,19 +121,10 @@ class SmartOilGaugeClient:
             "Referer": "https://app.smartoilgauge.com/app.php",
         }
 
-        # Debug cookies in jar
-        cookies_in_jar = {
-            cookie.key: cookie.value for cookie in self._session.cookie_jar
-        }
-        _LOGGER.info("Cookies before AJAX post: %s", cookies_in_jar)
-        _LOGGER.info("AJAX Request headers: %s", headers)
-
         try:
             async with self._session.post(
                 AJAX_URL, data=ajax_payload, headers=headers
             ) as r:
-                _LOGGER.info("AJAX Response status: %s", r.status)
-                _LOGGER.info("AJAX Response headers: %s", dict(r.headers))
                 if r.status != 200:
                     _LOGGER.error("AJAX call failed with status: %s", r.status)
                     raise CannotConnect("AJAX request failed")
