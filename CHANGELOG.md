@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.4.0...v1.4.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* install devcontainer venv outside the workspace mount ([8b109fa](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/8b109fac4c76bcfb086d4b83bb80a8dd552567ff))
+* remove sensitive cookie and header logging ([3e8ee60](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/3e8ee606fd3f1e049dbb3473a8ac69f7fea9fd49))
+* remove sensitive cookie and header logging ([aae80f1](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/aae80f1f7f1cf0f83da48ecb5f1b22c978eabb35))
+* remove sensitive cookie and header logging ([2eeb186](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/2eeb186da44169ceef9085842994b6bc5f66a9ce))
+
 ## [1.4.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.3.0...v1.4.0) (2026-06-16)
 
 
