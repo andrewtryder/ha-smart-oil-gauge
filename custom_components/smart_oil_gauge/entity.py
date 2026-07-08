@@ -40,11 +40,4 @@ class SmartOilGaugeEntity(CoordinatorEntity[SmartOilGaugeDataUpdateCoordinator])
         """Retrieve this entity's tank data from coordinator updates."""
         if not self.coordinator.data:
             return None
-        return next(
-            (
-                tank
-                for tank in self.coordinator.data
-                if str(tank.get("tank_id")) == self.tank_id
-            ),
-            None,
-        )
+        return self.coordinator.data.get(self.tank_id)

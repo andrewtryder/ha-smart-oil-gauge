@@ -21,7 +21,9 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-class SmartOilGaugeDataUpdateCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
+class SmartOilGaugeDataUpdateCoordinator(
+    DataUpdateCoordinator[dict[str, dict[str, Any]]]
+):
     """Class to manage fetching Smart Oil Gauge data."""
 
     def __init__(
@@ -40,14 +42,14 @@ class SmartOilGaugeDataUpdateCoordinator(DataUpdateCoordinator[list[dict[str, An
             update_interval=timedelta(hours=update_interval_hours),
         )
 
-    async def _async_update_data(self) -> list[dict[str, Any]]:
+    async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         """Update data via client."""
         try:
             # Fetch tanks list. The client handles automatic login
             # and retries if needed.
             data = await self.client.async_get_tanks()
             self.last_successful_update = dt_util.utcnow()
-            return data
+            return {str(tank["tank_id"]): tank for tank in data}
         except CannotConnect as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
         except InvalidAuth as err:

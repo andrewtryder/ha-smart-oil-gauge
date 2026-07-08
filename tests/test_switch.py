@@ -13,7 +13,7 @@ from custom_components.smart_oil_gauge.switch import SmartOilGaugeSwitch
 async def test_switch_toggle(hass: HomeAssistant) -> None:
     """Test switch toggle methods directly."""
     coordinator = MagicMock(spec=SmartOilGaugeDataUpdateCoordinator)
-    coordinator.data = []
+    coordinator.data = {}
 
     switch = SmartOilGaugeSwitch(coordinator, "12345", "Test Tank")
     assert switch.name == "Virtual Toggle"

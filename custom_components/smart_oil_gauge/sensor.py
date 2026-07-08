@@ -45,7 +45,7 @@ async def async_setup_entry(
         return
 
     entities: list[SensorEntity] = []
-    for tank in coordinator.data:
+    for tank in coordinator.data.values():
         tank_id = str(tank.get("tank_id"))
         tank_name = tank.get("tank_name", "Oil Tank")
 
