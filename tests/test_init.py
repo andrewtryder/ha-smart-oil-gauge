@@ -50,7 +50,7 @@ async def test_setup_unload_entry(hass: HomeAssistant) -> None:
         assert entry.entry_id in hass.data[DOMAIN]
 
         coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-        assert coordinator.data == MOCK_TANK_DATA
+        assert list(coordinator.data.values()) == MOCK_TANK_DATA
 
         # Test unloading
         await hass.config_entries.async_unload(entry.entry_id)
