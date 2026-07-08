@@ -70,3 +70,109 @@ async def test_binary_sensors_normal_fuel(hass: HomeAssistant) -> None:
         state = hass.states.get("binary_sensor.main_house_tank_low_fuel_alert")
         assert state is not None
         assert state.state == "off"
+
+
+MOCK_TANK_DATA_INVALID = [
+    {
+        "tank_id": "12345",
+        "tank_name": "Main House Tank",
+        "sensor_gallons": "invalid",
+        "nominal": "275",
+        "low_level": "0.25",
+        "battery": "Excellent",
+        "sensor_usg": "0.85",
+    }
+]
+
+
+async def test_binary_sensors_invalid_fuel(hass: HomeAssistant) -> None:
+    """Test low fuel binary sensor handles ValueError for invalid fuel data."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=MOCK_TANK_DATA_INVALID,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("binary_sensor.main_house_tank_low_fuel_alert")
+        assert state is not None
+        assert state.state == "unknown"
+
+
+async def test_binary_sensors_missing_nominal(hass: HomeAssistant) -> None:
+    """Test low fuel binary sensor returns None when nominal missing/0."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[
+            {
+                "tank_id": "12345",
+                "tank_name": "Main House Tank",
+                "sensor_gallons": "50.0",
+                "nominal": "0",
+                "low_level": "0.25",
+            }
+        ],
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("binary_sensor.main_house_tank_low_fuel_alert")
+        assert state is not None
+        assert state.state == "unknown"
+
+
+async def test_binary_sensors_missing_gallons(hass: HomeAssistant) -> None:
+    """Test low fuel binary sensor returns None when gallons missing."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[
+            {
+                "tank_id": "12345",
+                "tank_name": "Main House Tank",
+                "nominal": "275",
+            }
+        ],
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("binary_sensor.main_house_tank_low_fuel_alert")
+        assert state is not None
+        assert state.state == "unknown"
+
+
+async def test_binary_sensors_no_tanks(hass: HomeAssistant) -> None:
+    """Test setup does not create entities when no tanks returned."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[],
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("binary_sensor.main_house_tank_low_fuel_alert")
+        assert state is None
