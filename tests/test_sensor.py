@@ -61,6 +61,19 @@ MOCK_TANK_DATA_LOW_USAGE = [
     }
 ]
 
+MOCK_TANK_DATA_INVALID_LEVEL = [
+    {
+        "tank_id": "12345",
+        "tank_name": "Main House Tank",
+        "sensor_gallons": "invalid_number",
+        "nominal": "275",
+        "battery": "Good",
+        "sensor_usg": "0.85",
+        "fillable": "250",
+        "low_level": "0.25",
+    }
+]
+
 
 async def test_sensors_success(hass: HomeAssistant) -> None:
     """Test sensors load successfully and show correct states."""
@@ -256,6 +269,47 @@ async def test_sensors_low_usage(hass: HomeAssistant) -> None:
         assert days_quarter_state is not None
         assert days_quarter_state.state == "unknown"
 
+        days_eighth_state = hass.states.get("sensor.main_house_tank_days_to_1_8")
+        assert days_eighth_state is not None
+        assert days_eighth_state.state == "unknown"
+
+
+async def test_sensors_invalid_level(hass: HomeAssistant) -> None:
+    """Test sensor handles invalid level strings properly."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=MOCK_TANK_DATA_INVALID_LEVEL,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Level should be 'unknown' due to invalid string
+        level_state = hass.states.get("sensor.main_house_tank_oil_level")
+        assert level_state is not None
+        assert level_state.state == "unknown"
+
+        # Percentage should be 'unknown'
+        percentage_state = hass.states.get("sensor.main_house_tank_oil_percentage")
+        assert percentage_state is not None
+        assert percentage_state.state == "unknown"
+
+        # Max fill should be 'unknown'
+        max_fill_state = hass.states.get("sensor.main_house_tank_max_fill")
+        assert max_fill_state is not None
+        assert max_fill_state.state == "unknown"
+
+        # Days to 1/4 should be 'unknown'
+        days_quarter_state = hass.states.get("sensor.main_house_tank_days_to_1_4")
+        assert days_quarter_state is not None
+        assert days_quarter_state.state == "unknown"
+
+        # Days to 1/8 should be 'unknown'
         days_eighth_state = hass.states.get("sensor.main_house_tank_days_to_1_8")
         assert days_eighth_state is not None
         assert days_eighth_state.state == "unknown"
