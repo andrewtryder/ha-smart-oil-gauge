@@ -360,26 +360,10 @@ class SmartOilGaugeDaysToQuarterSensor(SmartOilGaugeEntity, SensorEntity):
     @property
     def native_value(self) -> int | None:
         """Return the state of the sensor."""
-        tank = self._get_tank_data()
-        if not tank:
+        data = self._get_usage_calculation_data()
+        if not data:
             return None
-
-        sensor_gallons = tank.get("sensor_gallons")
-        if sensor_gallons is None:
-            return None
-
-        usg = tank.get("sensor_usg")
-        if usg is None:
-            return None
-
-        try:
-            gal = float(sensor_gallons)
-            daily_usage = float(usg)
-        except ValueError:
-            return None
-
-        if abs(daily_usage) < 0.2:
-            return None
+        tank, gal, daily_usage = data
 
         try:
             nominal = float(tank.get("nominal") or 275)
@@ -412,26 +396,10 @@ class SmartOilGaugeDaysToEighthSensor(SmartOilGaugeEntity, SensorEntity):
     @property
     def native_value(self) -> int | None:
         """Return the state of the sensor."""
-        tank = self._get_tank_data()
-        if not tank:
+        data = self._get_usage_calculation_data()
+        if not data:
             return None
-
-        sensor_gallons = tank.get("sensor_gallons")
-        if sensor_gallons is None:
-            return None
-
-        usg = tank.get("sensor_usg")
-        if usg is None:
-            return None
-
-        try:
-            gal = float(sensor_gallons)
-            daily_usage = float(usg)
-        except ValueError:
-            return None
-
-        if abs(daily_usage) < 0.2:
-            return None
+        tank, gal, daily_usage = data
 
         try:
             nominal = float(tank.get("nominal") or 275)
