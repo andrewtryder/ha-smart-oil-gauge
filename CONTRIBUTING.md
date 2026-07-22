@@ -52,3 +52,48 @@ PYTHONPATH=. .venv/bin/pytest --cov=custom_components/smart_oil_gauge --cov-repo
 1. Fork the repository and create your branch from `main` or `master`.
 2. Commit your changes and ensure all `ruff`, `pytest`, and `hassfest` checks pass.
 3. Open a Pull Request detailing the changes, motivation, and verification steps.
+
+## Pull request titles
+
+Pull-request titles must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. When a pull request is merged, its title becomes the squash commit title on `main`. Release Please uses that commit title to determine releases and changelog entries.
+
+- Scopes are optional (for example, `feat(sensor): ...` or `feat: ...`).
+- Intermediate branch commits do not need to follow Conventional Commits because pull requests are squash-merged.
+- Breaking changes use `!`, such as `feat!: change entity identifiers`.
+
+### Accepted types
+
+* `feat`: user-facing feature
+* `fix`: bug fix
+* `deps`: dependency update
+* `docs`: documentation
+* `style`: formatting-only change
+* `refactor`: internal restructuring
+* `perf`: performance improvement
+* `test`: tests
+* `build`: build or dependency tooling
+* `ci`: CI or automation
+* `chore`: maintenance
+* `revert`: revert of an earlier change
+
+### Valid examples
+
+```text
+feat(sensor): add refill confidence
+fix(auth): normalize the account email
+docs: clarify HACS installation
+test(coordinator): cover corrupt stored data
+ci: enforce semantic pull request titles
+feat!: change entity unique IDs
+```
+
+### Invalid examples
+
+```text
+Added a feature
+Fix login
+Update README
+feat: Add refill confidence
+```
+
+The final invalid example fails because the subject starts with an uppercase letter.
