@@ -142,8 +142,16 @@ async def test_remove_entry(hass: HomeAssistant) -> None:
     )
     entry.add_to_hass(hass)
 
-    with patch(
-        "homeassistant.helpers.storage.Store.async_remove", new_callable=AsyncMock
-    ) as mock_remove_store:
+    with (
+        patch(
+            "homeassistant.helpers.storage.Store.async_remove", new_callable=AsyncMock
+        ) as mock_remove_store,
+        patch(
+            "custom_components.smart_oil_gauge.async_delete_issue"
+        ) as mock_delete_issue,
+    ):
         await async_remove_entry(hass, entry)
         assert mock_remove_store.called
+        mock_delete_issue.assert_called_once_with(
+            hass, DOMAIN, f"api_breakage_{entry.entry_id}"
+        )

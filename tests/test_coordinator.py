@@ -179,3 +179,20 @@ async def test_coordinator_storage_load_failure_and_corrupt_data(
     assert "nan_amount_tank" not in coordinator.last_refills
     assert "invalid_ts_tank" not in coordinator.last_refills
     assert "not_a_dict_tank" not in coordinator.last_refills
+
+    # Test naive ISO timestamp normalization to UTC
+    naive_data = {
+        "previous_levels": {},
+        "last_refills": {
+            "naive_tank": {
+                "amount": "80.0",
+                "timestamp": "2026-07-21T12:00:00",
+            }
+        },
+    }
+    coordinator._store.async_load = AsyncMock(return_value=naive_data)
+    coordinator._storage_loaded = False
+    await coordinator._async_load_storage()
+
+    assert "naive_tank" in coordinator.last_refills
+    assert coordinator.last_refills["naive_tank"]["timestamp"].tzinfo is not None

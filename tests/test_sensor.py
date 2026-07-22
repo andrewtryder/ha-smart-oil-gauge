@@ -1,6 +1,6 @@
 """Tests for Smart Oil Gauge sensor entities."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
@@ -376,6 +376,79 @@ async def test_sensors_dynamic_discovery_and_availability(
         t2_level_after = hass.states.get("sensor.garage_tank_oil_level")
         assert t2_level_after is not None
         assert t2_level_after.state == "unavailable"
+
+
+async def test_sensors_overflow_arithmetic(hass: HomeAssistant) -> None:
+    """Test calculations resulting in non-finite or out-of-range bounds return None."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "username": "test@example.com",
+            "password": "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    tank_overflow = {
+        "tank_id": "12345",
+        "tank_name": "Overflow Tank",
+        "sensor_gallons": "1e308",
+        "nominal": "1e-308",
+        "sensor_usg": "1e-308",
+        "fillable": "1e308",
+    }
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[tank_overflow],
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        # Verify setup with overflow data completes safely without uncaught exceptions
+        assert hass.states.get("sensor.overflow_tank_oil_level") is not None
+
+
+def test_sensor_helper_functions_direct() -> None:
+    """Test sensor helper calculation edge cases directly."""
+    from custom_components.smart_oil_gauge.sensor import (
+        _get_days_to_eighth_value,
+        _get_days_to_quarter_value,
+        _get_estimated_runout_date_value,
+        _get_max_fill_value,
+    )
+
+    mock_coord = MagicMock()
+
+    # _get_max_fill_value non-finite difference
+    assert (
+        _get_max_fill_value(
+            {"sensor_gallons": "-1e308", "fillable": "1e308"}, mock_coord
+        )
+        is None
+    )
+
+    # _get_days_to_quarter_value out of range / non-finite
+    assert (
+        _get_days_to_quarter_value(
+            {"sensor_gallons": "1e308", "sensor_usg": "0.5"}, mock_coord
+        )
+        is None
+    )
+
+    # _get_days_to_eighth_value out of range / non-finite
+    assert (
+        _get_days_to_eighth_value(
+            {"sensor_gallons": "1e308", "sensor_usg": "0.5"}, mock_coord
+        )
+        is None
+    )
+
+    # _get_estimated_runout_date_value out of range
+    assert (
+        _get_estimated_runout_date_value(
+            {"sensor_gallons": "1e308", "sensor_usg": "0.5"}, mock_coord
+        )
+        is None
+    )
 
 
 async def test_sensors_refill_detection_and_runout_date(

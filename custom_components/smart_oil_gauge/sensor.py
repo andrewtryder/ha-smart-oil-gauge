@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -70,7 +71,8 @@ def _get_percentage_value(
             nominal,
         )
         return None
-    return round((gal_float / nominal_float) * 100.0, 1)
+    result = (gal_float / nominal_float) * 100.0
+    return round(result, 1) if math.isfinite(result) else None
 
 
 def _get_battery_value(
@@ -141,7 +143,10 @@ def _get_max_fill_value(
             fillable,
         )
         return None
-    return max(0.0, fillable_val - gal)
+    diff = fillable_val - gal
+    if not math.isfinite(diff):
+        return None
+    return max(0.0, diff)
 
 
 def _get_days_to_quarter_value(
@@ -160,6 +165,8 @@ def _get_days_to_quarter_value(
     if nominal is None or low_level is None:
         return None
     dtl = (gal - nominal * low_level) / daily_usage
+    if not math.isfinite(dtl) or not (0 <= dtl <= 36500):
+        return None
     return max(0, round(dtl))
 
 
@@ -178,6 +185,8 @@ def _get_days_to_eighth_value(
     if nominal is None:
         return None
     dte = (gal - nominal * 0.125) / daily_usage
+    if not math.isfinite(dte) or not (0 <= dte <= 36500):
+        return None
     return max(0, round(dte))
 
 
@@ -195,6 +204,8 @@ def _get_estimated_runout_date_value(
     if gal is None or daily_usage is None or daily_usage <= 0.05:
         return None
     days_left = gal / daily_usage
+    if not math.isfinite(days_left) or not (0 <= days_left <= 36500):
+        return None
     return dt_util.utcnow() + timedelta(days=days_left)
 
 

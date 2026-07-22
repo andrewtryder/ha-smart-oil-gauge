@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -114,6 +115,7 @@ class SmartOilGaugeDataUpdateCoordinator(
                 ts = dt_util.parse_datetime(ts_raw)
             if ts is None:
                 continue
+            ts = dt_util.as_utc(ts)
             clean[tank_id] = {"amount": amount, "timestamp": ts}
         return clean
 
@@ -212,7 +214,7 @@ class SmartOilGaugeDataUpdateCoordinator(
             prev_level = tank_levels[source]
             if prev_level is not None:
                 diff = current_level - prev_level
-                if diff >= 15.0:
+                if math.isfinite(diff) and diff >= 15.0:
                     _LOGGER.info(
                         "Refill detected for tank %s: %.1f gallons added", tank_id, diff
                     )
