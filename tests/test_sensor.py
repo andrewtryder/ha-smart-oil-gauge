@@ -426,6 +426,16 @@ def test_sensor_helper_functions_direct() -> None:
         is None
     )
 
+    # _get_percentage_value overflow
+    from custom_components.smart_oil_gauge.sensor import _get_percentage_value
+
+    assert (
+        _get_percentage_value(
+            {"sensor_gallons": "1e308", "nominal": "1e-308"}, mock_coord
+        )
+        is None
+    )
+
     # _get_days_to_quarter_value out of range / non-finite
     assert (
         _get_days_to_quarter_value(
@@ -434,12 +444,54 @@ def test_sensor_helper_functions_direct() -> None:
         is None
     )
 
+    # _get_days_to_quarter_value below or at threshold clamps to 0
+    assert (
+        _get_days_to_quarter_value(
+            {
+                "sensor_gallons": "20.0",
+                "nominal": "275",
+                "sensor_usg": "1.0",
+                "low_level": "0.25",
+            },
+            mock_coord,
+        )
+        == 0
+    )
+    assert (
+        _get_days_to_quarter_value(
+            {
+                "sensor_gallons": "68.75",
+                "nominal": "275",
+                "sensor_usg": "1.0",
+                "low_level": "0.25",
+            },
+            mock_coord,
+        )
+        == 0
+    )
+
     # _get_days_to_eighth_value out of range / non-finite
     assert (
         _get_days_to_eighth_value(
             {"sensor_gallons": "1e308", "sensor_usg": "0.5"}, mock_coord
         )
         is None
+    )
+
+    # _get_days_to_eighth_value below or at threshold clamps to 0
+    assert (
+        _get_days_to_eighth_value(
+            {"sensor_gallons": "10.0", "nominal": "275", "sensor_usg": "1.0"},
+            mock_coord,
+        )
+        == 0
+    )
+    assert (
+        _get_days_to_eighth_value(
+            {"sensor_gallons": "34.375", "nominal": "275", "sensor_usg": "1.0"},
+            mock_coord,
+        )
+        == 0
     )
 
     # _get_estimated_runout_date_value out of range

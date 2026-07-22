@@ -196,3 +196,35 @@ async def test_coordinator_storage_load_failure_and_corrupt_data(
 
     assert "naive_tank" in coordinator.last_refills
     assert coordinator.last_refills["naive_tank"]["timestamp"].tzinfo is not None
+
+    # Impossible ISO timestamp (e.g. Feb 30) skips bad record but keeps valid record
+    impossible_ts_data = {
+        "previous_levels": {},
+        "last_refills": {
+            "valid_record": {
+                "amount": "100.0",
+                "timestamp": "2026-07-21T12:00:00+00:00",
+            },
+            "impossible_record": {
+                "amount": "50.0",
+                "timestamp": "2026-02-30T12:00:00+00:00",
+            },
+        },
+    }
+    coordinator._store.async_load = AsyncMock(return_value=impossible_ts_data)
+    coordinator._storage_loaded = False
+    await coordinator._async_load_storage()
+
+    assert "valid_record" in coordinator.last_refills
+    assert "impossible_record" not in coordinator.last_refills
+
+
+async def test_coordinator_refill_non_finite_diff(hass: HomeAssistant) -> None:
+    """Test refill detection ignores non-finite level differences."""
+    client = MagicMock()
+    coordinator = SmartOilGaugeDataUpdateCoordinator(hass, client, 6, "test_entry")
+    coordinator._previous_levels = {"12345": {"sensor_gallons": -1e308}}
+
+    # Current level resulting in infinite diff
+    coordinator._check_refill("12345", {"sensor_gallons": "1e308", "nominal": "275"})
+    assert "12345" not in coordinator.last_refills
