@@ -187,9 +187,11 @@ class SmartOilGaugeClient:
         self, data: dict[str, Any], retry_login: bool
     ) -> list:
         """Process tanks response data and handle session expiry."""
+        message = str(data.get("message") or "")
+        status = data.get("Status")
         is_unauthorized = (
-            data.get("result") == "error" and "Access Denied" in data.get("message", "")
-        ) or data.get("Status") == 401
+            data.get("result") == "error" and "Access Denied" in message
+        ) or str(status) == "401"
 
         if is_unauthorized:
             if retry_login:

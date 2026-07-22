@@ -25,6 +25,7 @@ from .coordinator import (
     SmartOilGaugeDataUpdateCoordinator,
 )
 from .entity import SmartOilGaugeEntity
+from .util import parse_finite_float
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,11 +46,10 @@ def _get_level_value(
     val = sensor_gallons if sensor_gallons is not None else model_gallons
     if val is None:
         return None
-    try:
-        return float(val)
-    except (TypeError, ValueError, OverflowError):
-        _LOGGER.warning("Could not convert level value '%s' to float", val)
-        return None
+    res = parse_finite_float(val)
+    if res is None:
+        _LOGGER.warning("Could not convert level value '%s' to finite float", val)
+    return res
 
 
 def _get_percentage_value(
@@ -59,21 +59,18 @@ def _get_percentage_value(
     model_gallons = tank.get("model_gallons")
     val = sensor_gallons if sensor_gallons is not None else model_gallons
     nominal = tank.get("nominal")
-    if val is None or not nominal:
+    if val is None or nominal is None:
         return None
-    try:
-        gal_float = float(val)
-        nominal_float = float(nominal)
-        if nominal_float <= 0:
-            return None
-        return round((gal_float / nominal_float) * 100.0, 1)
-    except (TypeError, ValueError, OverflowError):
+    gal_float = parse_finite_float(val)
+    nominal_float = parse_finite_float(nominal)
+    if gal_float is None or nominal_float is None or nominal_float <= 0:
         _LOGGER.warning(
             "Could not calculate percentage from level '%s' and capacity '%s'",
             val,
             nominal,
         )
         return None
+    return round((gal_float / nominal_float) * 100.0, 1)
 
 
 def _get_battery_value(
@@ -103,11 +100,11 @@ def _get_daily_usage_value(
     usg = tank.get("sensor_usg")
     if usg is None:
         return None
-    try:
-        return round(float(usg), 2)
-    except (TypeError, ValueError, OverflowError):
-        _LOGGER.warning("Could not convert daily usage rate '%s' to float", usg)
+    res = parse_finite_float(usg)
+    if res is None:
+        _LOGGER.warning("Could not convert daily usage rate '%s' to finite float", usg)
         return None
+    return round(res, 2)
 
 
 def _get_last_checked_value(
@@ -122,55 +119,45 @@ def _get_max_level_value(
     nominal = tank.get("nominal")
     if nominal is None:
         return None
-    try:
-        return float(nominal)
-    except (TypeError, ValueError, OverflowError):
-        _LOGGER.warning("Could not convert nominal value '%s' to float", nominal)
-        return None
+    res = parse_finite_float(nominal)
+    if res is None:
+        _LOGGER.warning("Could not convert nominal value '%s' to finite float", nominal)
+    return res
 
 
 def _get_max_fill_value(
     tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
 ) -> float | None:
     sensor_gallons = tank.get("sensor_gallons")
-    if sensor_gallons is None:
-        return None
     fillable = tank.get("fillable")
-    if fillable is None:
+    if sensor_gallons is None or fillable is None:
         return None
-    try:
-        gal = float(sensor_gallons)
-        fillable_val = float(fillable)
-        return max(0.0, fillable_val - gal)
-    except (TypeError, ValueError, OverflowError):
+    gal = parse_finite_float(sensor_gallons)
+    fillable_val = parse_finite_float(fillable)
+    if gal is None or fillable_val is None:
         _LOGGER.warning(
             "Could not calculate max fill from gallons %s and fillable %s",
             sensor_gallons,
             fillable,
         )
         return None
+    return max(0.0, fillable_val - gal)
 
 
 def _get_days_to_quarter_value(
     tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
 ) -> int | None:
     sensor_gallons = tank.get("sensor_gallons")
-    if sensor_gallons is None:
-        return None
     usg = tank.get("sensor_usg")
-    if usg is None:
+    if sensor_gallons is None or usg is None:
         return None
-    try:
-        gal = float(sensor_gallons)
-        daily_usage = float(usg)
-    except (TypeError, ValueError, OverflowError):
+    gal = parse_finite_float(sensor_gallons)
+    daily_usage = parse_finite_float(usg)
+    if gal is None or daily_usage is None or abs(daily_usage) < 0.2:
         return None
-    if abs(daily_usage) < 0.2:
-        return None
-    try:
-        nominal = float(tank.get("nominal") or 275)
-        low_level = float(tank.get("low_level") or 0.25)
-    except (TypeError, ValueError, OverflowError):
+    nominal = parse_finite_float(tank.get("nominal") or 275)
+    low_level = parse_finite_float(tank.get("low_level") or 0.25)
+    if nominal is None or low_level is None:
         return None
     dtl = (gal - nominal * low_level) / daily_usage
     return max(0, round(dtl))
@@ -180,21 +167,15 @@ def _get_days_to_eighth_value(
     tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
 ) -> int | None:
     sensor_gallons = tank.get("sensor_gallons")
-    if sensor_gallons is None:
-        return None
     usg = tank.get("sensor_usg")
-    if usg is None:
+    if sensor_gallons is None or usg is None:
         return None
-    try:
-        gal = float(sensor_gallons)
-        daily_usage = float(usg)
-    except (TypeError, ValueError, OverflowError):
+    gal = parse_finite_float(sensor_gallons)
+    daily_usage = parse_finite_float(usg)
+    if gal is None or daily_usage is None or abs(daily_usage) < 0.2:
         return None
-    if abs(daily_usage) < 0.2:
-        return None
-    try:
-        nominal = float(tank.get("nominal") or 275)
-    except (TypeError, ValueError, OverflowError):
+    nominal = parse_finite_float(tank.get("nominal") or 275)
+    if nominal is None:
         return None
     dte = (gal - nominal * 0.125) / daily_usage
     return max(0, round(dte))
@@ -209,12 +190,9 @@ def _get_estimated_runout_date_value(
     usg = tank.get("sensor_usg")
     if val is None or usg is None:
         return None
-    try:
-        gal = float(val)
-        daily_usage = float(usg)
-    except (TypeError, ValueError, OverflowError):
-        return None
-    if daily_usage <= 0.05:
+    gal = parse_finite_float(val)
+    daily_usage = parse_finite_float(usg)
+    if gal is None or daily_usage is None or daily_usage <= 0.05:
         return None
     days_left = gal / daily_usage
     return dt_util.utcnow() + timedelta(days=days_left)

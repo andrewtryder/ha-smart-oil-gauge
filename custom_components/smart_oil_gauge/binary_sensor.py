@@ -14,6 +14,7 @@ from .coordinator import (
     SmartOilGaugeDataUpdateCoordinator,
 )
 from .entity import SmartOilGaugeEntity
+from .util import parse_finite_float
 
 
 async def async_setup_entry(
@@ -71,15 +72,12 @@ class SmartOilGaugeLowFuelBinarySensor(SmartOilGaugeEntity, BinarySensorEntity):
         if not tank:
             return None
 
-        try:
-            gal_str = tank.get("sensor_gallons") or tank.get("model_gallons")
-            if gal_str is None:
-                return None
-            gal = float(gal_str)
-            nominal = float(tank.get("nominal") or 1)
-            low_level = float(tank.get("low_level") or 0.25)
-            if nominal <= 0:
-                return None
-            return (gal / nominal) < low_level
-        except ValueError:
+        gal_str = tank.get("sensor_gallons") or tank.get("model_gallons")
+        if gal_str is None:
             return None
+        gal = parse_finite_float(gal_str)
+        nominal = parse_finite_float(tank.get("nominal") or 1)
+        low_level = parse_finite_float(tank.get("low_level") or 0.25)
+        if gal is None or nominal is None or low_level is None or nominal <= 0:
+            return None
+        return (gal / nominal) < low_level

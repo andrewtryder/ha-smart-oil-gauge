@@ -39,7 +39,7 @@ async def async_get_config_entry_diagnostics(
 
     return {
         "entry_data": async_redact_data(dict(entry.data), TO_REDACT),
-        "entry_options": dict(entry.options),
+        "entry_options": async_redact_data(dict(entry.options), TO_REDACT),
         "coordinator_last_update_success": coordinator.last_update_success,
         "coordinator_last_successful_update": (
             coordinator.last_successful_update.isoformat()

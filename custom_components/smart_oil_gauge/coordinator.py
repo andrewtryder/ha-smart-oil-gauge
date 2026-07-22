@@ -26,6 +26,7 @@ from .client import (
     SmartOilGaugeException,
 )
 from .const import DOMAIN
+from .util import parse_finite_float
 
 _LOGGER = logging.getLogger(__name__)
 STORAGE_VERSION = 1
@@ -71,33 +72,73 @@ class SmartOilGaugeDataUpdateCoordinator(
             update_interval=timedelta(hours=update_interval_hours),
         )
 
+    def _parse_stored_previous_levels(
+        self, stored: dict[str, Any]
+    ) -> dict[str, dict[str, float]]:
+        """Parse and validate stored previous levels."""
+        raw_prev = stored.get("previous_levels")
+        if not isinstance(raw_prev, dict):
+            return {}
+
+        clean: dict[str, dict[str, float]] = {}
+        for tank_id, modes in raw_prev.items():
+            if not isinstance(modes, dict) or not isinstance(tank_id, str):
+                continue
+            clean_modes: dict[str, float] = {}
+            for mode_key, level_val in modes.items():
+                parsed_lvl = parse_finite_float(level_val)
+                if parsed_lvl is not None:
+                    clean_modes[mode_key] = parsed_lvl
+            if clean_modes:
+                clean[tank_id] = clean_modes
+        return clean
+
+    def _parse_stored_last_refills(
+        self, stored: dict[str, Any]
+    ) -> dict[str, dict[str, Any]]:
+        """Parse and validate stored last refills."""
+        raw_refills = stored.get("last_refills")
+        if not isinstance(raw_refills, dict):
+            return {}
+
+        clean: dict[str, dict[str, Any]] = {}
+        for tank_id, refill in raw_refills.items():
+            if not isinstance(refill, dict) or not isinstance(tank_id, str):
+                continue
+            amount = parse_finite_float(refill.get("amount"))
+            if amount is None or amount < 0:
+                continue
+            ts_raw = refill.get("timestamp")
+            ts: datetime | None = None
+            if isinstance(ts_raw, str):
+                ts = dt_util.parse_datetime(ts_raw)
+            if ts is None:
+                continue
+            clean[tank_id] = {"amount": amount, "timestamp": ts}
+        return clean
+
     async def _async_load_storage(self) -> None:
-        """Load stored refill state and previous levels."""
+        """Load stored refill state and previous levels safely."""
         if self._storage_loaded:
             return
-        self._storage_loaded = True
+
         try:
             stored = await self._store.async_load()
             if isinstance(stored, dict):
-                self._previous_levels = stored.get("previous_levels", {})
-                raw_refills = stored.get("last_refills", {})
-                for tank_id, refill in raw_refills.items():
-                    if isinstance(refill, dict) and "amount" in refill:
-                        ts_str = refill.get("timestamp")
-                        ts = (
-                            dt_util.parse_datetime(ts_str)
-                            if isinstance(ts_str, str)
-                            else None
-                        )
-                        self.last_refills[tank_id] = {
-                            "amount": refill["amount"],
-                            "timestamp": ts or dt_util.utcnow(),
-                        }
+                prev_levels = self._parse_stored_previous_levels(stored)
+                refills = self._parse_stored_last_refills(stored)
+                self._previous_levels = prev_levels
+                self.last_refills = refills
+            self._storage_loaded = True
         except Exception as ex:  # pylint: disable=broad-except
             _LOGGER.warning("Could not load persistent storage for refills: %s", ex)
 
     async def _async_save_storage(self) -> None:
         """Save refill state and previous levels to persistent storage."""
+        if not self._storage_loaded:
+            _LOGGER.debug("Skipping storage save because storage is not loaded")
+            return
+
         try:
             serialized_refills = {}
             for tank_id, refill in self.last_refills.items():
@@ -159,9 +200,8 @@ class SmartOilGaugeDataUpdateCoordinator(
         if gal_str is None:
             return
 
-        try:
-            current_level = float(gal_str)
-        except (TypeError, ValueError, OverflowError):
+        current_level = parse_finite_float(gal_str)
+        if current_level is None:
             return
 
         if tank_id not in self._previous_levels:
