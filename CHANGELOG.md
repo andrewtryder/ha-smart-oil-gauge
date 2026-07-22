@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.4](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.3...v1.5.4) (2026-07-22)
+
+
+### Bug Fixes
+
+* threshold zero-clamping, ISO timestamp parse exception handling, and binary sensor zero handling ([#39](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/39)) ([945001b](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/945001b66da708206b426e04e92637ac43092d39))
+
 ## [1.5.3](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.2...v1.5.3) (2026-07-22)
 
 
