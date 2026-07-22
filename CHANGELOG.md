@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.0...v1.5.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* refactor options flow reload, session teardown, diagnostic redactions, persistent refill storage, and entry-scoped repair issues ([#34](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/34)) ([557a22f](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/557a22f372b913ccc1a36a1f8faaa5e98f53ec59))
+
 ## [1.5.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.4.1...v1.5.0) (2026-07-22)
 
 
