@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.1...v1.5.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* harden storage safety, validate nested structures, parse finite floats, and clean up on removal ([#35](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/35)) ([49cb2ab](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/49cb2aba9d954f3bab084154dd6bc8f78e0a6758))
+
 ## [1.5.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.0...v1.5.1) (2026-07-22)
 
 
