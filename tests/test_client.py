@@ -351,3 +351,83 @@ async def test_async_get_tanks_non_string_message(mock_session) -> None:
     )
     with pytest.raises(SmartOilGaugeException):
         await client.async_get_tanks()
+
+
+@pytest.mark.asyncio
+async def test_async_login_additional_branches(mock_session) -> None:
+    """Test client.py additional error branches for 100% coverage."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+
+    # ClientError on GET
+    mock_session.get.side_effect = aiohttp.ClientError("Client connection error")
+    with pytest.raises(CannotConnect):
+        await client._async_fetch_login_nonce()
+
+    # Missing nonce
+    mock_session.get.side_effect = None
+    mock_session.get.return_value = MockResponse(
+        text="<html><body>No nonce</body></html>", status=200
+    )
+    with pytest.raises(
+        CannotConnect, match="CSRF token ccf_nonce not found in page HTML"
+    ):
+        await client._async_fetch_login_nonce()
+
+    # Unexpected status on check_http_status
+    mock_session.get.return_value = MockResponse(status=418)
+    with pytest.raises(CannotConnect, match="Failed portal request with status 418"):
+        await client._async_fetch_login_nonce()
+
+    # POST timeout
+    mock_session.get.return_value = MockResponse(text=LOGIN_HTML_SUCCESS, status=200)
+    mock_session.post.side_effect = TimeoutError("POST timeout")
+    with pytest.raises(CannotConnect, match="Timeout submitting credentials"):
+        await client.async_login()
+
+    # POST ClientError
+    mock_session.post.side_effect = aiohttp.ClientError("POST client error")
+    with pytest.raises(CannotConnect):
+        await client.async_login()
+
+
+@pytest.mark.asyncio
+async def test_async_get_tanks_additional_branches(mock_session) -> None:
+    """Test client.py get_tanks additional error branches for 100% coverage."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    client._session.cookie_jar.update_cookies({"PHPSESSID": "test_session_id"})
+
+    # HTTP 401 retry in get_tanks
+    mock_session.post.side_effect = [
+        MockResponse(status=401),
+        MockResponse(status=200, url="https://app.smartoilgauge.com/app.php"),
+        MockResponse(
+            json_data={
+                "result": "ok",
+                "tanks": [{"tank_id": "12345", "tank_name": "Test Tank"}],
+            },
+            status=200,
+        ),
+    ]
+    mock_session.get.return_value = MockResponse(text=LOGIN_HTML_SUCCESS, status=200)
+    tanks = await client.async_get_tanks()
+    assert len(tanks) == 1
+
+    # Unauthorized repeated (retry_login=False)
+    mock_session.post.side_effect = None
+    mock_session.post.return_value = MockResponse(
+        json_data={"result": "error", "message": "Access Denied"}, status=200
+    )
+    with pytest.raises(InvalidAuth, match="Session authorization failed"):
+        await client._handle_tanks_response(
+            {"result": "error", "message": "Access Denied"}, retry_login=False
+        )
+
+    # AJAX TimeoutError
+    mock_session.post.side_effect = TimeoutError("AJAX timeout")
+    with pytest.raises(CannotConnect, match="Timeout fetching tanks"):
+        await client.async_get_tanks()
+
+    # AJAX ClientError
+    mock_session.post.side_effect = aiohttp.ClientError("AJAX client error")
+    with pytest.raises(CannotConnect):
+        await client.async_get_tanks()

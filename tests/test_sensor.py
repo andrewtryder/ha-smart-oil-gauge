@@ -603,3 +603,49 @@ async def test_sensors_edge_case_numeric_exceptions(hass: HomeAssistant) -> None
         runout_state = hass.states.get("sensor.main_tank_estimated_runout_date")
         assert runout_state is not None
         assert runout_state.state == "unknown"
+
+
+async def test_sensor_uncovered_helper_branches(hass: HomeAssistant) -> None:
+    """Test remaining helper branches in sensor.py for 100% coverage."""
+    from custom_components.smart_oil_gauge.sensor import (
+        _get_days_to_eighth_value,
+        _get_days_to_quarter_value,
+        _get_estimated_runout_date_value,
+        _get_max_fill_value,
+    )
+
+    mock_coord = MagicMock()
+
+    # _get_max_fill_value infinite diff
+    assert (
+        _get_max_fill_value(
+            {"sensor_gallons": "-1e308", "fillable": "1e308"}, mock_coord
+        )
+        is None
+    )
+
+    # _get_days_to_quarter_value invalid nominal/low_level
+    assert (
+        _get_days_to_quarter_value(
+            {"sensor_gallons": "100", "sensor_usg": "1.0", "nominal": "invalid"},
+            mock_coord,
+        )
+        is None
+    )
+
+    # _get_days_to_eighth_value invalid nominal
+    assert (
+        _get_days_to_eighth_value(
+            {"sensor_gallons": "100", "sensor_usg": "1.0", "nominal": "invalid"},
+            mock_coord,
+        )
+        is None
+    )
+
+    # _get_estimated_runout_date_value negative days_left
+    assert (
+        _get_estimated_runout_date_value(
+            {"sensor_gallons": "-10.0", "sensor_usg": "1.0"}, mock_coord
+        )
+        is None
+    )

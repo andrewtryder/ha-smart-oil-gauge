@@ -3,7 +3,7 @@ testpaths = [
     "tests",
 ]
 asyncio_mode = "auto"
-addopts = "--cov=custom_components/smart_oil_gauge --cov-report=term-missing --cov-fail-under=95"
+addopts = "--cov=custom_components/smart_oil_gauge --cov-report=term-missing --cov-report=xml --cov-fail-under=96"
 pythonpath = [
     ".",
 ]

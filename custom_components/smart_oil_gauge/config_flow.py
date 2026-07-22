@@ -60,7 +60,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Smart Oil Gauge."""
 
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     @callback
@@ -77,8 +77,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            username = user_input[CONF_USERNAME].strip().lower()
             # Check if username is already configured
-            await self.async_set_unique_id(user_input[CONF_USERNAME])
+            await self.async_set_unique_id(username)
             self._abort_if_unique_id_configured()
 
             try:
@@ -91,7 +92,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             else:
-                return self.async_create_entry(title=info["title"], data=user_input)
+                data = {
+                    CONF_USERNAME: username,
+                    CONF_PASSWORD: user_input[CONF_PASSWORD],
+                }
+                options = {
+                    CONF_UPDATE_INTERVAL_HOURS: user_input[CONF_UPDATE_INTERVAL_HOURS],
+                }
+                return self.async_create_entry(
+                    title=info["title"], data=data, options=options
+                )
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors

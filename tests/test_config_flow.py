@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.smart_oil_gauge import async_migrate_entry
 from custom_components.smart_oil_gauge.client import CannotConnect, InvalidAuth
 from custom_components.smart_oil_gauge.config_flow import validate_input
 from custom_components.smart_oil_gauge.const import CONF_UPDATE_INTERVAL_HOURS, DOMAIN
@@ -24,7 +25,7 @@ async def test_flow_user_init(hass: HomeAssistant) -> None:
 
 
 async def test_flow_user_success(hass: HomeAssistant) -> None:
-    """Test successful config flow."""
+    """Test successful config flow with data/options separation."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -36,7 +37,7 @@ async def test_flow_user_success(hass: HomeAssistant) -> None:
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {
-                CONF_USERNAME: "user@example.com",
+                CONF_USERNAME: "USER@EXAMPLE.COM ",
                 CONF_PASSWORD: "password123",
                 CONF_UPDATE_INTERVAL_HOURS: 12,
             },
@@ -49,12 +50,41 @@ async def test_flow_user_success(hass: HomeAssistant) -> None:
         assert result2["data"] == {
             CONF_USERNAME: "user@example.com",
             CONF_PASSWORD: "password123",
+        }
+        assert result2["options"] == {
             CONF_UPDATE_INTERVAL_HOURS: 12,
         }
 
 
-async def test_flow_user_cannot_connect(hass: HomeAssistant) -> None:
-    """Test connection error during validation."""
+async def test_flow_user_duplicate_abort(hass: HomeAssistant) -> None:
+    """Test aborting when duplicate entry exists."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="user@example.com",
+        data={
+            CONF_USERNAME: "user@example.com",
+            CONF_PASSWORD: "password123",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_USERNAME: " User@Example.com ",
+            CONF_PASSWORD: "password123",
+            CONF_UPDATE_INTERVAL_HOURS: 6,
+        },
+    )
+    assert result2["type"] is FlowResultType.ABORT
+    assert result2["reason"] == "already_configured"
+
+
+async def test_flow_user_cannot_connect_recovery(hass: HomeAssistant) -> None:
+    """Test connection error recovery during setup."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -76,9 +106,26 @@ async def test_flow_user_cannot_connect(hass: HomeAssistant) -> None:
         assert result2["type"] is FlowResultType.FORM
         assert result2["errors"] == {"base": "cannot_connect"}
 
+    # Retry with valid connection
+    with patch(
+        "custom_components.smart_oil_gauge.config_flow.validate_input",
+        return_value={"title": "House Tank"},
+    ):
+        result3 = await hass.config_entries.flow.async_configure(
+            result2["flow_id"],
+            {
+                CONF_USERNAME: "user@example.com",
+                CONF_PASSWORD: "password123",
+                CONF_UPDATE_INTERVAL_HOURS: 6,
+            },
+        )
+        await hass.async_block_till_done()
 
-async def test_flow_user_invalid_auth(hass: HomeAssistant) -> None:
-    """Test authentication error during validation."""
+        assert result3["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_flow_user_invalid_auth_recovery(hass: HomeAssistant) -> None:
+    """Test authentication error recovery during setup."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -91,7 +138,7 @@ async def test_flow_user_invalid_auth(hass: HomeAssistant) -> None:
             result["flow_id"],
             {
                 CONF_USERNAME: "user@example.com",
-                CONF_PASSWORD: "password123",
+                CONF_PASSWORD: "wrong_password",
                 CONF_UPDATE_INTERVAL_HOURS: 6,
             },
         )
@@ -100,9 +147,26 @@ async def test_flow_user_invalid_auth(hass: HomeAssistant) -> None:
         assert result2["type"] is FlowResultType.FORM
         assert result2["errors"] == {"base": "invalid_auth"}
 
+    # Retry with correct credentials
+    with patch(
+        "custom_components.smart_oil_gauge.config_flow.validate_input",
+        return_value={"title": "House Tank"},
+    ):
+        result3 = await hass.config_entries.flow.async_configure(
+            result2["flow_id"],
+            {
+                CONF_USERNAME: "user@example.com",
+                CONF_PASSWORD: "correct_password",
+                CONF_UPDATE_INTERVAL_HOURS: 6,
+            },
+        )
+        await hass.async_block_till_done()
 
-async def test_flow_user_unknown_exception(hass: HomeAssistant) -> None:
-    """Test unknown error during validation."""
+        assert result3["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_flow_user_unknown_exception_recovery(hass: HomeAssistant) -> None:
+    """Test unknown error recovery during setup."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -123,6 +187,23 @@ async def test_flow_user_unknown_exception(hass: HomeAssistant) -> None:
 
         assert result2["type"] is FlowResultType.FORM
         assert result2["errors"] == {"base": "unknown"}
+
+    # Retry successfully
+    with patch(
+        "custom_components.smart_oil_gauge.config_flow.validate_input",
+        return_value={"title": "House Tank"},
+    ):
+        result3 = await hass.config_entries.flow.async_configure(
+            result2["flow_id"],
+            {
+                CONF_USERNAME: "user@example.com",
+                CONF_PASSWORD: "password123",
+                CONF_UPDATE_INTERVAL_HOURS: 6,
+            },
+        )
+        await hass.async_block_till_done()
+
+        assert result3["type"] is FlowResultType.CREATE_ENTRY
 
 
 async def test_validate_input(hass: HomeAssistant) -> None:
@@ -165,6 +246,8 @@ async def test_options_flow(hass: HomeAssistant) -> None:
         data={
             CONF_USERNAME: "user@example.com",
             CONF_PASSWORD: "password123",
+        },
+        options={
             CONF_UPDATE_INTERVAL_HOURS: 6,
         },
     )
@@ -182,15 +265,14 @@ async def test_options_flow(hass: HomeAssistant) -> None:
     assert result2["data"] == {CONF_UPDATE_INTERVAL_HOURS: 12}
 
 
-async def test_flow_reauth_success(hass: HomeAssistant) -> None:
-    """Test successful re-authentication flow."""
+async def test_flow_reauth_recovery(hass: HomeAssistant) -> None:
+    """Test re-authentication flow error recovery."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id="user@example.com",
         data={
             CONF_USERNAME: "user@example.com",
             CONF_PASSWORD: "old_password",
-            CONF_UPDATE_INTERVAL_HOURS: 6,
         },
     )
     entry.add_to_hass(hass)
@@ -199,37 +281,7 @@ async def test_flow_reauth_success(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "reauth_confirm"
 
-    with patch(
-        "custom_components.smart_oil_gauge.config_flow.validate_input",
-        return_value={"title": "Smart Oil Gauge"},
-    ):
-        result2 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_PASSWORD: "new_password"},
-        )
-        await hass.async_block_till_done()
-
-        assert result2["type"] is FlowResultType.ABORT
-        assert result2["reason"] == "reauth_successful"
-        assert entry.data[CONF_PASSWORD] == "new_password"
-
-
-async def test_flow_reauth_invalid_auth(hass: HomeAssistant) -> None:
-    """Test re-authentication flow failure due to invalid auth."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id="user@example.com",
-        data={
-            CONF_USERNAME: "user@example.com",
-            CONF_PASSWORD: "old_password",
-            CONF_UPDATE_INTERVAL_HOURS: 6,
-        },
-    )
-    entry.add_to_hass(hass)
-
-    result = await entry.start_reauth_flow(hass)
-    assert result["type"] is FlowResultType.FORM
-
+    # Attempt with invalid auth
     with patch(
         "custom_components.smart_oil_gauge.config_flow.validate_input",
         side_effect=InvalidAuth,
@@ -243,60 +295,70 @@ async def test_flow_reauth_invalid_auth(hass: HomeAssistant) -> None:
         assert result2["type"] is FlowResultType.FORM
         assert result2["errors"] == {"base": "invalid_auth"}
 
-
-async def test_flow_reauth_cannot_connect(hass: HomeAssistant) -> None:
-    """Test re-authentication flow failure due to connection error."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id="user@example.com",
-        data={
-            CONF_USERNAME: "user@example.com",
-            CONF_PASSWORD: "old_password",
-        },
-    )
-    entry.add_to_hass(hass)
-
-    result = await entry.start_reauth_flow(hass)
-    assert result["type"] is FlowResultType.FORM
-
+    # Attempt with connection failure
     with patch(
         "custom_components.smart_oil_gauge.config_flow.validate_input",
         side_effect=CannotConnect,
     ):
-        result2 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
+        result3 = await hass.config_entries.flow.async_configure(
+            result2["flow_id"],
             {CONF_PASSWORD: "new_password"},
         )
         await hass.async_block_till_done()
 
-        assert result2["type"] is FlowResultType.FORM
-        assert result2["errors"] == {"base": "cannot_connect"}
+        assert result3["type"] is FlowResultType.FORM
+        assert result3["errors"] == {"base": "cannot_connect"}
 
-
-async def test_flow_reauth_unknown_exception(hass: HomeAssistant) -> None:
-    """Test re-authentication flow failure due to unknown exception."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id="user@example.com",
-        data={
-            CONF_USERNAME: "user@example.com",
-            CONF_PASSWORD: "old_password",
-        },
-    )
-    entry.add_to_hass(hass)
-
-    result = await entry.start_reauth_flow(hass)
-    assert result["type"] is FlowResultType.FORM
-
+    # Attempt with unknown exception
     with patch(
         "custom_components.smart_oil_gauge.config_flow.validate_input",
         side_effect=Exception,
     ):
-        result2 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
+        result4 = await hass.config_entries.flow.async_configure(
+            result3["flow_id"],
             {CONF_PASSWORD: "new_password"},
         )
         await hass.async_block_till_done()
 
-        assert result2["type"] is FlowResultType.FORM
-        assert result2["errors"] == {"base": "unknown"}
+        assert result4["type"] is FlowResultType.FORM
+        assert result4["errors"] == {"base": "unknown"}
+
+    # Successful recovery
+    with patch(
+        "custom_components.smart_oil_gauge.config_flow.validate_input",
+        return_value={"title": "Smart Oil Gauge"},
+    ):
+        result5 = await hass.config_entries.flow.async_configure(
+            result4["flow_id"],
+            {CONF_PASSWORD: "new_password"},
+        )
+        await hass.async_block_till_done()
+
+        assert result5["type"] is FlowResultType.ABORT
+        assert result5["reason"] == "reauth_successful"
+        assert entry.data[CONF_PASSWORD] == "new_password"
+
+
+async def test_migration_v1_to_v2(hass: HomeAssistant) -> None:
+    """Test migrating v1 config entry to v2."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        data={
+            CONF_USERNAME: "user@example.com",
+            CONF_PASSWORD: "password123",
+            CONF_UPDATE_INTERVAL_HOURS: 8,
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry)
+    assert entry.version == 2
+    assert entry.data == {
+        CONF_USERNAME: "user@example.com",
+        CONF_PASSWORD: "password123",
+    }
+    assert entry.options == {
+        CONF_UPDATE_INTERVAL_HOURS: 8,
+    }

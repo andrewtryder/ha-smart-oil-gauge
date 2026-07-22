@@ -74,6 +74,32 @@ async def async_unload_entry(
     return unload_ok
 
 
+async def async_migrate_entry(
+    hass: HomeAssistant, config_entry: SmartOilGaugeConfigEntry
+) -> bool:
+    """Migrate old entry."""
+    _LOGGER.debug("Migrating config entry from version %s", config_entry.version)
+
+    if config_entry.version == 1:
+        new_data = dict(config_entry.data)
+        new_options = dict(config_entry.options)
+
+        if CONF_UPDATE_INTERVAL_HOURS in new_data:
+            interval = new_data.pop(CONF_UPDATE_INTERVAL_HOURS)
+            if CONF_UPDATE_INTERVAL_HOURS not in new_options:
+                new_options[CONF_UPDATE_INTERVAL_HOURS] = interval
+
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=new_data,
+            options=new_options,
+            version=2,
+        )
+        _LOGGER.info("Migration to version %s successful", 2)
+
+    return True
+
+
 async def async_remove_entry(
     hass: HomeAssistant, entry: SmartOilGaugeConfigEntry
 ) -> None:
