@@ -239,3 +239,33 @@ async def test_binary_sensors_dynamic_discovery_and_availability(
         t2_alert_after = hass.states.get("binary_sensor.garage_tank_low_fuel_alert")
         assert t2_alert_after is not None
         assert t2_alert_after.state == "unavailable"
+
+
+async def test_binary_sensors_numeric_zero_gallons(hass: HomeAssistant) -> None:
+    """Test numeric 0 in sensor_gallons does not trigger model_gallons fallback."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[
+            {
+                "tank_id": "12345",
+                "tank_name": "Main House Tank",
+                "sensor_gallons": 0,  # Numeric zero
+                "model_gallons": "200.0",  # High fallback
+                "nominal": "275",
+                "low_level": "0.25",
+            }
+        ],
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("binary_sensor.main_house_tank_low_fuel_alert")
+        assert state is not None
+        # 0 / 275 = 0 < 0.25 -> Low fuel alert ON (not OFF via model_gallons)
+        assert state.state == "on"

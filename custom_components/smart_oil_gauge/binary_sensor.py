@@ -72,10 +72,12 @@ class SmartOilGaugeLowFuelBinarySensor(SmartOilGaugeEntity, BinarySensorEntity):
         if not tank:
             return None
 
-        gal_str = tank.get("sensor_gallons") or tank.get("model_gallons")
-        if gal_str is None:
+        gal_val = tank.get("sensor_gallons")
+        if gal_val is None:
+            gal_val = tank.get("model_gallons")
+        if gal_val is None:
             return None
-        gal = parse_finite_float(gal_str)
+        gal = parse_finite_float(gal_val)
         nominal = parse_finite_float(tank.get("nominal") or 1)
         low_level = parse_finite_float(tank.get("low_level") or 0.25)
         if gal is None or nominal is None or low_level is None or nominal <= 0:

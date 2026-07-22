@@ -165,7 +165,7 @@ def _get_days_to_quarter_value(
     if nominal is None or low_level is None:
         return None
     dtl = (gal - nominal * low_level) / daily_usage
-    if not math.isfinite(dtl) or not (0 <= dtl <= 36500):
+    if not math.isfinite(dtl) or dtl > 36500:
         return None
     return max(0, round(dtl))
 
@@ -185,7 +185,7 @@ def _get_days_to_eighth_value(
     if nominal is None:
         return None
     dte = (gal - nominal * 0.125) / daily_usage
-    if not math.isfinite(dte) or not (0 <= dte <= 36500):
+    if not math.isfinite(dte) or dte > 36500:
         return None
     return max(0, round(dte))
 

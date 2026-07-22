@@ -112,7 +112,10 @@ class SmartOilGaugeDataUpdateCoordinator(
             ts_raw = refill.get("timestamp")
             ts: datetime | None = None
             if isinstance(ts_raw, str):
-                ts = dt_util.parse_datetime(ts_raw)
+                try:
+                    ts = dt_util.parse_datetime(ts_raw)
+                except ValueError:
+                    continue
             if ts is None:
                 continue
             ts = dt_util.as_utc(ts)
