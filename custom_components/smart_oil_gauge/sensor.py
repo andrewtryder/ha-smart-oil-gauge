@@ -30,6 +30,8 @@ from .util import parse_finite_float
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class SmartOilGaugeSensorEntityDescription(SensorEntityDescription):

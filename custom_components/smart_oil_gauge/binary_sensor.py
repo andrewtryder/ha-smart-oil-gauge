@@ -16,6 +16,8 @@ from .coordinator import (
 from .entity import SmartOilGaugeEntity
 from .util import parse_finite_float
 
+PARALLEL_UPDATES = 0
+
 
 async def async_setup_entry(
     hass: HomeAssistant,

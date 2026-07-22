@@ -1,6 +1,6 @@
 """Tests for Smart Oil Gauge binary sensor entities."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -269,3 +269,15 @@ async def test_binary_sensors_numeric_zero_gallons(hass: HomeAssistant) -> None:
         assert state is not None
         # 0 / 275 = 0 < 0.25 -> Low fuel alert ON (not OFF via model_gallons)
         assert state.state == "on"
+
+
+async def test_binary_sensor_none_gallons(hass: HomeAssistant) -> None:
+    """Test binary sensor is_on returns None when gallons are missing."""
+    from custom_components.smart_oil_gauge.binary_sensor import (
+        SmartOilGaugeLowFuelBinarySensor,
+    )
+
+    mock_coord = MagicMock()
+    mock_coord.data = {"12345": {"tank_id": "12345"}}
+    sensor = SmartOilGaugeLowFuelBinarySensor(mock_coord, "12345", "Tank")
+    assert sensor.is_on is None

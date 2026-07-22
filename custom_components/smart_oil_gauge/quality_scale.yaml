@@ -1,0 +1,50 @@
+# Quality Scale tracking for Smart Oil Gauge integration
+# Ref: https://developers.home-assistant.io/docs/integration_quality_scale
+
+rules:
+  # Bronze Tier
+  action-setup: exempt # Integration provides no custom actions/services
+  appropriate-polling: done
+  brands: done
+  common-modules: done
+  config-flow-test-coverage: done
+  config-flow: done
+  dependency-transitive-clean: done
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
+  entity-event-setup: exempt # Integration provides no event entities
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data: done
+  test-before-setup: done
+  unique-config-entry: done
+
+  # Silver Tier
+  action-exceptions: exempt # Integration provides no custom actions/services
+  config-entry-unloading: done
+  entity-unavailable: done
+  integration-owner: done
+  log-when-unavailable: done
+  parallel-updates: done
+  reauthentication-flow: done
+  test-coverage: done
+
+  # Gold Tier
+  devices: done
+  diagnostics: done
+  discovery: exempt # Smart Oil Gauge does not support local hardware discovery (mDNS, SSDP, USB, Zeroconf)
+  discovery-update-info: exempt # No local discovery
+  dynamic-devices: done
+  entity-category: done
+  entity-device-class: done
+  entity-disabled-by-default: done
+  entity-translations: done
+  exception-translations: done
+  icon-translations: done
+  reconfigure-flow: todo
+
+  # Platinum Tier
+  async-dependency: done
+  inject-websession: done
+  strict-typing: done

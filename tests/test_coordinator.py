@@ -228,3 +228,30 @@ async def test_coordinator_refill_non_finite_diff(hass: HomeAssistant) -> None:
     # Current level resulting in infinite diff
     coordinator._check_refill("12345", {"sensor_gallons": "1e308", "nominal": "275"})
     assert "12345" not in coordinator.last_refills
+
+
+async def test_coordinator_save_exception_and_prev_levels(hass: HomeAssistant) -> None:
+    """Test storage save exception and previous levels parsing."""
+    client = MagicMock()
+    coordinator = SmartOilGaugeDataUpdateCoordinator(hass, client, 6, "test_entry")
+
+    # Test save exception
+    coordinator._storage_loaded = True
+    coordinator.last_refills = {"12345": {"amount": 50.0, "timestamp": "invalid"}}
+    coordinator._store.async_save = AsyncMock(side_effect=OSError("Save failed"))
+    await coordinator._async_save_storage()
+
+    # Test previous levels parsing with invalid dict items
+    corrupt_prev = {
+        "previous_levels": {
+            "valid_tank": {"sensor_gallons": "100.0"},
+            "invalid_tank": "not_a_dict",
+            123: {"sensor_gallons": "50.0"},
+        },
+        "last_refills": {},
+    }
+    coordinator._store.async_load = AsyncMock(return_value=corrupt_prev)
+    coordinator._storage_loaded = False
+    await coordinator._async_load_storage()
+    assert "valid_tank" in coordinator._previous_levels
+    assert "invalid_tank" not in coordinator._previous_levels

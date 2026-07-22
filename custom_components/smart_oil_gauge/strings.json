@@ -6,7 +6,13 @@
         "description": "Please enter your Smart Oil Gauge username (email) and password.",
         "data": {
           "username": "Email Address",
-          "password": "Password"
+          "password": "Password",
+          "update_interval_hours": "Polling Interval (Hours)"
+        },
+        "data_description": {
+          "username": "The email address associated with your Smart Oil Gauge portal account.",
+          "password": "The password for your Smart Oil Gauge portal account.",
+          "update_interval_hours": "How frequently Home Assistant should check the Smart Oil Gauge portal for updated readings (1-24 hours)."
         }
       },
       "reauth_confirm": {
@@ -14,6 +20,9 @@
         "description": "Please enter the updated password for {username}.",
         "data": {
           "password": "Password"
+        },
+        "data_description": {
+          "password": "Your updated Smart Oil Gauge account password."
         }
       }
     },
@@ -30,8 +39,12 @@
     "step": {
       "init": {
         "title": "Smart Oil Gauge Options",
+        "description": "Configure background polling frequency for Smart Oil Gauge.",
         "data": {
           "update_interval_hours": "Polling Interval (Hours)"
+        },
+        "data_description": {
+          "update_interval_hours": "Frequency in hours to fetch new sensor data from the Smart Oil Gauge portal (1-24 hours). Recommended range is 6 to 12 hours."
         }
       }
     }
