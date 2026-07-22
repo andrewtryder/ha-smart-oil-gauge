@@ -46,36 +46,4 @@ class SmartOilGaugeEntity(CoordinatorEntity[SmartOilGaugeDataUpdateCoordinator])
         """Retrieve this entity's tank data from coordinator updates."""
         if not self.coordinator.data:
             return None
-        return next(
-            (
-                tank
-                for tank in self.coordinator.data
-                if str(tank.get("tank_id")) == self.tank_id
-            ),
-            None,
-        )
-
-    def _get_usage_calculation_data(self) -> tuple[dict[str, Any], float, float] | None:
-        """Helper to get and validate data needed for days-to-empty calculations."""
-        tank = self._get_tank_data()
-        if not tank:
-            return None
-
-        sensor_gallons = tank.get("sensor_gallons")
-        if sensor_gallons is None:
-            return None
-
-        usg = tank.get("sensor_usg")
-        if usg is None:
-            return None
-
-        try:
-            gal = float(sensor_gallons)
-            daily_usage = float(usg)
-        except ValueError:
-            return None
-
-        if abs(daily_usage) < 0.2:
-            return None
-
-        return tank, gal, daily_usage
+        return self.coordinator.data.get(self.tank_id)
