@@ -3,48 +3,35 @@
 
 rules:
   # Bronze Tier
-  action-setup: exempt # Integration provides no custom actions/services
-  appropriate-polling: done
+  action_setup: exempt
+  appropriate_polling: done
   brands: done
-  common-modules: done
-  config-flow-test-coverage: done
-  config-flow: done
-  dependency-transitive-clean: done
-  docs-high-level-description: done
-  docs-installation-instructions: done
-  docs-removal-instructions: done
-  entity-event-setup: exempt # Integration provides no event entities
-  entity-unique-id: done
-  has-entity-name: done
-  runtime-data: done
-  test-before-setup: done
-  unique-config-entry: done
+  common_modules: done
+  config_flow_test_coverage: done
+  config_flow: done
+  dependency_transparency: done
+  docs_actions: exempt
+  docs_high_level_description: done
+  docs_installation_instructions: done
+  docs_removal_instructions: done
+  docs_triggers: exempt
+  docs_conditions: exempt
+  entity_event_setup: exempt
+  entity_unique_id: done
+  has_entity_name: done
+  runtime_data: done
+  test_before_configure: done
+  test_before_setup: done
+  unique_config_entry: done
 
   # Silver Tier
-  action-exceptions: exempt # Integration provides no custom actions/services
-  config-entry-unloading: done
-  entity-unavailable: done
-  integration-owner: done
-  log-when-unavailable: done
-  parallel-updates: done
-  reauthentication-flow: done
-  test-coverage: done
-
-  # Gold Tier
-  devices: done
-  diagnostics: done
-  discovery: exempt # Smart Oil Gauge does not support local hardware discovery (mDNS, SSDP, USB, Zeroconf)
-  discovery-update-info: exempt # No local discovery
-  dynamic-devices: done
-  entity-category: done
-  entity-device-class: done
-  entity-disabled-by-default: done
-  entity-translations: done
-  exception-translations: done
-  icon-translations: done
-  reconfigure-flow: todo
-
-  # Platinum Tier
-  async-dependency: done
-  inject-websession: done
-  strict-typing: done
+  action_exceptions: exempt
+  config_entry_unloading: done
+  docs_configuration_parameters: done
+  docs_installation_parameters: done
+  entity_unavailable: done
+  integration_owner: done
+  log_when_unavailable: done
+  parallel_updates: done
+  reauthentication_flow: done
+  test_coverage: done
