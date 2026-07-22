@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.3](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.2...v1.5.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* result-level finite checks, timezone normalization, and repairs cleanup assertion ([693c4fd](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/693c4fda6cd848aa7f8c36295e326168782603d9))
+
 ## [1.5.2](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.1...v1.5.2) (2026-07-22)
 
 
