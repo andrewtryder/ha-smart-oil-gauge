@@ -59,7 +59,7 @@ jobs:
         run: PYTHONPATH=. pytest
 
       - name: Upload Coverage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.1
         if: always()
         with:
           name: coverage-report-${{ matrix.python-version }}

@@ -45,6 +45,14 @@ async def test_flow_user_success(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         assert len(mock_validate.mock_calls) == 1
+        mock_validate.assert_called_once_with(
+            hass,
+            {
+                CONF_USERNAME: "user@example.com",
+                CONF_PASSWORD: "password123",
+                CONF_UPDATE_INTERVAL_HOURS: 12,
+            },
+        )
         assert result2["type"] is FlowResultType.CREATE_ENTRY
         assert result2["title"] == "House Tank"
         assert result2["data"] == {
@@ -340,12 +348,13 @@ async def test_flow_reauth_recovery(hass: HomeAssistant) -> None:
 
 
 async def test_migration_v1_to_v2(hass: HomeAssistant) -> None:
-    """Test migrating v1 config entry to v2."""
+    """Test migrating v1 config entry to v2 with identity normalization."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         version=1,
+        unique_id=" USER@EXAMPLE.COM ",
         data={
-            CONF_USERNAME: "user@example.com",
+            CONF_USERNAME: " USER@EXAMPLE.COM ",
             CONF_PASSWORD: "password123",
             CONF_UPDATE_INTERVAL_HOURS: 8,
         },
@@ -355,6 +364,7 @@ async def test_migration_v1_to_v2(hass: HomeAssistant) -> None:
 
     assert await async_migrate_entry(hass, entry)
     assert entry.version == 2
+    assert entry.unique_id == "user@example.com"
     assert entry.data == {
         CONF_USERNAME: "user@example.com",
         CONF_PASSWORD: "password123",

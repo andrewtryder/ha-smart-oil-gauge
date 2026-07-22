@@ -82,8 +82,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(username)
             self._abort_if_unique_id_configured()
 
+            normalized_input = {
+                **user_input,
+                CONF_USERNAME: username,
+            }
+
             try:
-                info = await validate_input(self.hass, user_input)
+                info = await validate_input(self.hass, normalized_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
