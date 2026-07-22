@@ -55,16 +55,16 @@ class SmartOilGaugeClient:
                 self._check_http_status(r.status, r.headers.get("Retry-After"))
                 html = await r.text()
         except TimeoutError as ex:
-            _LOGGER.error("Timeout error during login fetch")
+            _LOGGER.debug("Timeout error during login fetch: %s", ex)
             raise CannotConnect("Timeout connecting to portal") from ex
         except aiohttp.ClientError as ex:
-            _LOGGER.error("Connection error during login fetch: %s", ex)
+            _LOGGER.debug("Connection error during login fetch: %s", ex)
             raise CannotConnect from ex
 
         soup = BeautifulSoup(html, "html.parser")
         nonce_input = soup.find("input", {"name": "ccf_nonce"})
         if not nonce_input or not nonce_input.get("value"):
-            _LOGGER.error("Could not find ccf_nonce on login page")
+            _LOGGER.debug("Could not find ccf_nonce on login page")
             raise CannotConnect("CSRF token ccf_nonce not found in page HTML")
 
         return str(nonce_input.get("value"))
@@ -74,15 +74,13 @@ class SmartOilGaugeClient:
         if status in (401, 403):
             raise InvalidAuth(f"Authentication failed with HTTP status {status}")
         if status == 429:
-            _LOGGER.warning(
-                "Rate limited during request (Retry-After: %s)", retry_after
-            )
+            _LOGGER.debug("Rate limited during request (Retry-After: %s)", retry_after)
             raise CannotConnect("Rate limit exceeded")
         if status >= 500:
-            _LOGGER.error("Server error during portal request: %s", status)
+            _LOGGER.debug("Server error during portal request: %s", status)
             raise CannotConnect("Server error from portal")
         if status != 200:
-            _LOGGER.error("Portal request returned unexpected status %s", status)
+            _LOGGER.debug("Portal request returned unexpected status %s", status)
             raise CannotConnect(f"Failed portal request with status {status}")
 
     def _validate_login_html(self, login_html: str, final_url: str) -> None:
@@ -92,11 +90,11 @@ class SmartOilGaugeClient:
             err_msg = soup_err.find(class_="app_error")
             if err_msg and err_msg.get_text(strip=True):
                 error_text = err_msg.get_text(strip=True)
-                _LOGGER.warning("Authentication failed with message: %s", error_text)
+                _LOGGER.debug("Authentication failed with message: %s", error_text)
                 raise InvalidAuth(error_text)
 
         if "app.php" not in final_url:
-            _LOGGER.warning("Login redirect URL was not app.php: %s", final_url)
+            _LOGGER.debug("Login redirect URL was not app.php: %s", final_url)
             raise InvalidAuth("Invalid login credentials or session rejected")
 
     async def async_login(self) -> bool:
@@ -128,16 +126,16 @@ class SmartOilGaugeClient:
                 _LOGGER.info("Logged in successfully to Smart Oil Gauge")
                 return True
         except TimeoutError as ex:
-            _LOGGER.error("Timeout error during login POST")
+            _LOGGER.debug("Timeout error during login POST: %s", ex)
             raise CannotConnect("Timeout submitting credentials") from ex
         except aiohttp.ClientError as ex:
-            _LOGGER.error("Connection error during login POST: %s", ex)
+            _LOGGER.debug("Connection error during login POST: %s", ex)
             raise CannotConnect from ex
 
     def _process_json_payload(self, data: Any) -> dict[str, Any]:
         """Validate and return top-level JSON dictionary."""
         if not isinstance(data, dict):
-            _LOGGER.error("AJAX response is not a valid JSON object")
+            _LOGGER.debug("AJAX response is not a valid JSON object")
             raise CannotConnect("Unexpected response structure from server")
         return data
 
@@ -170,17 +168,17 @@ class SmartOilGaugeClient:
                 try:
                     raw_data = await r.json()
                 except (json.JSONDecodeError, aiohttp.ContentTypeError) as ex:
-                    _LOGGER.error("AJAX response is not valid JSON")
+                    _LOGGER.debug("AJAX response is not valid JSON: %s", ex)
                     raise CannotConnect("Invalid JSON response from server") from ex
 
                 data = self._process_json_payload(raw_data)
                 return await self._handle_tanks_response(data, retry_login)
 
         except TimeoutError as ex:
-            _LOGGER.error("Timeout error during AJAX fetch")
+            _LOGGER.debug("Timeout error during AJAX fetch: %s", ex)
             raise CannotConnect("Timeout fetching tanks") from ex
         except aiohttp.ClientError as ex:
-            _LOGGER.error("Network error during AJAX fetch: %s", ex)
+            _LOGGER.debug("Network error during AJAX fetch: %s", ex)
             raise CannotConnect from ex
 
     async def _handle_tanks_response(

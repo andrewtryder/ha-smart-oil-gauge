@@ -49,6 +49,21 @@ A HACS-compatible Home Assistant custom integration for the **Smart Oil Gauge** 
 - [Advanced Usage: Energy & Consumption Tracking](docs/advanced-usage.md)
 - [Dashboard Widgets & Daily Usage Tracking](docs/dashboards.md)
 
+## Prerequisites
+
+- A **Smart Oil Gauge** portal account (registered at [app.smartoilgauge.com](https://app.smartoilgauge.com)).
+- At least one oil tank already setup and linked in your Smart Oil Gauge portal account.
+
+## Setup Parameters
+
+When adding or configuring the integration, you will be prompted for:
+
+- **Email address**: The email address associated with your Smart Oil Gauge portal account.
+- **Password**: The password for your Smart Oil Gauge portal account.
+- **Polling interval**: Frequency in hours (between 1 and 24 hours; **6 hours** is recommended).
+
+---
+
 ## Installation
 
 ### Method 1: HACS (Recommended)
@@ -71,7 +86,7 @@ A HACS-compatible Home Assistant custom integration for the **Smart Oil Gauge** 
 1. In the Home Assistant UI, go to **Settings** -> **Devices & Services** -> **Integrations**.
 2. Click **+ Add Integration** in the bottom right.
 3. Search for **Smart Oil Gauge** and select it.
-4. Enter your Smart Oil Gauge username (email) and password, then click **Submit**.
+4. Enter your credentials and polling preferences, then click **Submit**.
 
 ---
 
@@ -81,6 +96,15 @@ The polling interval is configurable from **1 to 24 hours**, with **6 hours** as
 
 > [!NOTE]
 > The physical gauge hardware typically wakes up and updates the servers 1-3 times a day. Polling the cloud portal more frequently does not provide fresher data, and risks triggering rate limits or account blocks.
+
+## Removing the integration
+
+1. Go to **Settings** → **Devices & services**.
+2. Select **Smart Oil Gauge**.
+3. Open the integration menu (three dots next to the entry) and choose **Delete**.
+4. No changes are required in the Smart Oil Gauge portal.
+
+Deleting the integration also removes its locally stored refill history and related repair notifications.
 
 ## License
 
