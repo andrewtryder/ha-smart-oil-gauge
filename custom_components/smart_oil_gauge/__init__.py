@@ -89,10 +89,17 @@ async def async_migrate_entry(
             if CONF_UPDATE_INTERVAL_HOURS not in new_options:
                 new_options[CONF_UPDATE_INTERVAL_HOURS] = interval
 
+        username = str(new_data.get(CONF_USERNAME, "")).strip().lower()
+        if username:
+            new_data[CONF_USERNAME] = username
+        else:
+            username = config_entry.unique_id
+
         hass.config_entries.async_update_entry(
             config_entry,
             data=new_data,
             options=new_options,
+            unique_id=username,
             version=2,
         )
         _LOGGER.info("Migration to version %s successful", 2)

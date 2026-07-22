@@ -196,17 +196,17 @@ class SmartOilGaugeClient:
                 _LOGGER.info("Session expired or unauthorized. Retrying login...")
                 await self.async_login()
                 return await self.async_get_tanks(retry_login=False)
-            _LOGGER.error("Session authorization failed repeatedly")
+            _LOGGER.debug("Session authorization failed repeatedly")
             raise InvalidAuth("Session authorization failed")
 
         if data.get("result") != "ok":
             error_msg = data.get("message", "Unknown error")
-            _LOGGER.error("AJAX returned error result: %s", error_msg)
+            _LOGGER.debug("AJAX returned error result: %s", error_msg)
             raise SmartOilGaugeException(f"Error from server: {error_msg}")
 
         tanks = data.get("tanks")
         if not isinstance(tanks, list):
-            _LOGGER.error("Tanks payload is not a list")
+            _LOGGER.debug("Tanks payload is not a list")
             raise SmartOilGaugeException("Invalid tank data received from server")
 
         valid_tanks: list[dict[str, Any]] = []
@@ -225,7 +225,7 @@ class SmartOilGaugeClient:
             _LOGGER.warning("Discarded %d malformed tank records", discarded_count)
 
         if tanks and not valid_tanks:
-            _LOGGER.error("All returned tank records were malformed")
+            _LOGGER.debug("All returned tank records were malformed")
             raise SmartOilGaugeException("All returned tanks were malformed")
 
         _LOGGER.debug("Successfully fetched %d tanks", len(valid_tanks))
