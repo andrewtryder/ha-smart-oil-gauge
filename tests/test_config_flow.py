@@ -180,3 +180,123 @@ async def test_options_flow(hass: HomeAssistant) -> None:
     )
     assert result2["type"] is FlowResultType.CREATE_ENTRY
     assert result2["data"] == {CONF_UPDATE_INTERVAL_HOURS: 12}
+
+
+async def test_flow_reauth_success(hass: HomeAssistant) -> None:
+    """Test successful re-authentication flow."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="user@example.com",
+        data={
+            CONF_USERNAME: "user@example.com",
+            CONF_PASSWORD: "old_password",
+            CONF_UPDATE_INTERVAL_HOURS: 6,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+
+    with patch(
+        "custom_components.smart_oil_gauge.config_flow.validate_input",
+        return_value={"title": "Smart Oil Gauge"},
+    ):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_PASSWORD: "new_password"},
+        )
+        await hass.async_block_till_done()
+
+        assert result2["type"] is FlowResultType.ABORT
+        assert result2["reason"] == "reauth_successful"
+        assert entry.data[CONF_PASSWORD] == "new_password"
+
+
+async def test_flow_reauth_invalid_auth(hass: HomeAssistant) -> None:
+    """Test re-authentication flow failure due to invalid auth."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="user@example.com",
+        data={
+            CONF_USERNAME: "user@example.com",
+            CONF_PASSWORD: "old_password",
+            CONF_UPDATE_INTERVAL_HOURS: 6,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+
+    with patch(
+        "custom_components.smart_oil_gauge.config_flow.validate_input",
+        side_effect=InvalidAuth,
+    ):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_PASSWORD: "wrong_password"},
+        )
+        await hass.async_block_till_done()
+
+        assert result2["type"] is FlowResultType.FORM
+        assert result2["errors"] == {"base": "invalid_auth"}
+
+
+async def test_flow_reauth_cannot_connect(hass: HomeAssistant) -> None:
+    """Test re-authentication flow failure due to connection error."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="user@example.com",
+        data={
+            CONF_USERNAME: "user@example.com",
+            CONF_PASSWORD: "old_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+
+    with patch(
+        "custom_components.smart_oil_gauge.config_flow.validate_input",
+        side_effect=CannotConnect,
+    ):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_PASSWORD: "new_password"},
+        )
+        await hass.async_block_till_done()
+
+        assert result2["type"] is FlowResultType.FORM
+        assert result2["errors"] == {"base": "cannot_connect"}
+
+
+async def test_flow_reauth_unknown_exception(hass: HomeAssistant) -> None:
+    """Test re-authentication flow failure due to unknown exception."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="user@example.com",
+        data={
+            CONF_USERNAME: "user@example.com",
+            CONF_PASSWORD: "old_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+
+    with patch(
+        "custom_components.smart_oil_gauge.config_flow.validate_input",
+        side_effect=Exception,
+    ):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_PASSWORD: "new_password"},
+        )
+        await hass.async_block_till_done()
+
+        assert result2["type"] is FlowResultType.FORM
+        assert result2["errors"] == {"base": "unknown"}

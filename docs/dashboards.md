@@ -37,14 +37,28 @@ Since the tank level sensor (`sensor.oil_tank_level`) *decreases* when oil is bu
 #### 1. Add a Template Sensor in `configuration.yaml`
 ```yaml
 template:
-  - sensor:
+  - trigger:
+      - platform: state
+        entity_id: sensor.house_tank_oil_level
+    sensor:
       - name: "Total Oil Consumed"
         unique_id: total_oil_consumed
         unit_of_measurement: "gal"
-        device_class: water
+        device_class: volume
         state_class: total_increasing
         state: >
-          # Custom logic to accumulate level drops, ignoring fills.
+          {% if trigger.from_state is not none and trigger.to_state is not none %}
+            {% set from_val = trigger.from_state.state | float(none) %}
+            {% set to_val = trigger.to_state.state | float(none) %}
+            {% set current = this.state | float(0) %}
+            {% if from_val is not none and to_val is not none and from_val > to_val %}
+              {{ (current + (from_val - to_val)) | round(2) }}
+            {% else %}
+              {{ current }}
+            {% endif %}
+          {% else %}
+            {{ this.state | float(0) }}
+          {% endif %}
 ```
 #### 2. Create a Utility Meter Helper
 Go to **Settings** -> **Devices & Services** -> **Helpers** -> **Create Helper** -> **Utility Meter**. Set the input sensor to your newly created template sensor, and set the reset cycle to **Daily**, **Weekly**, or **Monthly**. Home Assistant will automatically log and graph your consumption history.

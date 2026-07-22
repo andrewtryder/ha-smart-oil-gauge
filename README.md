@@ -13,7 +13,7 @@
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-smart-oil-gauge&category=integration)
 
 
-A HACS-compatible Home Assistant custom integration for the **Smart Oil Gauge** by Connected Consumer Fuel. This integration logs into the Smart Oil Gauge web portal, retrieves the current tank data via AJAX, and registers the tank as a device with associated sensors.
+A HACS-compatible Home Assistant custom integration for the **Smart Oil Gauge** by Connected Consumer Fuel. This integration logs into the Smart Oil Gauge web portal, retrieves tank metrics via AJAX, and registers each tank as a device with associated sensors.
 
 <p align="center">
   <img src="images/device_card.png" alt="Smart Oil Gauge Device Card" width="600">
@@ -24,8 +24,22 @@ A HACS-compatible Home Assistant custom integration for the **Smart Oil Gauge** 
 - **Oil Level Sensor** (`sensor.oil_tank_level`): Remaining fuel level in gallons (preferring physical sensor readings and falling back to model estimates).
 - **Oil Percentage Sensor** (`sensor.oil_tank_percentage`): Percentage of the tank capacity that is full.
 - **Daily Usage Rate Sensor** (`sensor.oil_tank_daily_usage_rate`): Average rolling daily consumption rate in gallons per day (`gal/day`).
+- **Estimated Runout Date Sensor** (`sensor.oil_tank_estimated_runout_date`): Estimated timestamp when fuel will reach 0 gallons based on current level and daily usage rate.
+- **Refill Detection Sensors**:
+  - **Last Refill Amount** (`sensor.oil_tank_last_refill_amount`): Gallons added during the most recent detected refill.
+  - **Last Refill Date** (`sensor.oil_tank_last_refill_date`): Timestamp when the refill was detected.
 - **Battery Sensor** (`sensor.oil_tank_battery`): Battery health diagnostic status (e.g., `Excellent`, `Good`, `Fair`, `Poor`), with dynamic battery icons.
-- **Automatic Device Registry**: Groups all sensors for a single physical tank together as one device. Supports multiple tanks under a single account.
+- **Last Portal Update Sensor** (`sensor.oil_tank_last_portal_update`): Timestamp of the last successful integration refresh.
+- **Max Level Sensor** (`sensor.oil_tank_max_level`): Total nominal tank capacity in gallons.
+- **Max Fill Sensor** (`sensor.oil_tank_max_fill`): Remaining fillable capacity in gallons.
+- **Days to 1/4 Sensor** (`sensor.oil_tank_days_to_1_4`): Estimated days remaining until fuel reaches 25% capacity.
+- **Days to 1/8 Sensor** (`sensor.oil_tank_days_to_1_8`): Estimated days remaining until fuel reaches 12.5% capacity.
+- **Low Fuel Alert** (`binary_sensor.oil_tank_low_fuel_alert`): Problem binary sensor triggered when fuel level drops below the low threshold.
+- **Multi-Tank Support**: Automatically discovers and registers all tanks linked to a single Smart Oil Gauge account. New tanks added to the account are dynamically discovered.
+- **Vendor Portal Link**: Direct device configuration link (`https://app.smartoilgauge.com`) on each device card.
+- **Diagnostics Download**: Download sanitized diagnostic reports directly from Home Assistant.
+- **Repairs Integration**: Raises Home Assistant Repair notifications if portal structure changes, resolving automatically when recovery occurs.
+- **Credential Reauthentication**: Supports native Home Assistant reauthentication flows if user credentials expire or change.
 
 ## Documentation
 
@@ -59,12 +73,12 @@ A HACS-compatible Home Assistant custom integration for the **Smart Oil Gauge** 
 
 ---
 
-## Smart Polling Rate
+## Polling Interval & Options
 
-This integration is configured to poll the Smart Oil Gauge portal exactly **once every 6 hours (21,600 seconds)**.
+The polling interval is configurable from **1 to 24 hours**, with **6 hours** as the recommended default. You can adjust the polling frequency at any time via the integration's **Configure** / Options flow in Home Assistant.
 
 > [!NOTE]
-> The physical gauge hardware only wakes up and updates the servers 1-3 times a day. Polling the cloud portal more frequently does not provide fresher data, and risks triggering anti-scraping blocks or locking your account.
+> The physical gauge hardware typically wakes up and updates the servers 1-3 times a day. Polling the cloud portal more frequently does not provide fresher data, and risks triggering rate limits or account blocks.
 
 ## License
 

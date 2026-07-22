@@ -176,3 +176,66 @@ async def test_binary_sensors_no_tanks(hass: HomeAssistant) -> None:
 
         state = hass.states.get("binary_sensor.main_house_tank_low_fuel_alert")
         assert state is None
+
+
+async def test_binary_sensors_dynamic_discovery_and_availability(
+    hass: HomeAssistant,
+) -> None:
+    """Test dynamic tank discovery and entity availability for binary sensors."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    tank1 = {
+        "tank_id": "12345",
+        "tank_name": "Main Tank",
+        "sensor_gallons": "50.0",
+        "nominal": "275",
+        "low_level": "0.25",
+    }
+    tank2 = {
+        "tank_id": "67890",
+        "tank_name": "Garage Tank",
+        "sensor_gallons": "100.0",
+        "nominal": "150",
+        "low_level": "0.25",
+    }
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[tank1],
+    ) as mock_get_tanks:
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Tank 1 alert exists and is available
+        t1_alert = hass.states.get("binary_sensor.main_tank_low_fuel_alert")
+        assert t1_alert is not None
+        assert t1_alert.state == "on"
+
+        # Tank 2 alert does not exist yet
+        t2_alert = hass.states.get("binary_sensor.garage_tank_low_fuel_alert")
+        assert t2_alert is None
+
+        # Simulate update returning both Tank 1 and Tank 2
+        mock_get_tanks.return_value = [tank1, tank2]
+        coordinator = entry.runtime_data.coordinator
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
+        # Tank 2 alert was dynamically discovered and added
+        t2_alert = hass.states.get("binary_sensor.garage_tank_low_fuel_alert")
+        assert t2_alert is not None
+        assert t2_alert.state == "off"
+
+        # Simulate update where Tank 2 disappears
+        mock_get_tanks.return_value = [tank1]
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
+        # Tank 2 alert should now be unavailable
+        t2_alert_after = hass.states.get("binary_sensor.garage_tank_low_fuel_alert")
+        assert t2_alert_after is not None
+        assert t2_alert_after.state == "unavailable"

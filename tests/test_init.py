@@ -46,29 +46,27 @@ async def test_setup_unload_entry(hass: HomeAssistant) -> None:
 
         # Check if the entry is loaded successfully
         assert entry.state is ConfigEntryState.LOADED
-        assert DOMAIN in hass.data
-        assert entry.entry_id in hass.data[DOMAIN]
+        assert entry.runtime_data is not None
 
-        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+        coordinator = entry.runtime_data.coordinator
         assert list(coordinator.data.values()) == MOCK_TANK_DATA
 
         # Test unloading
         await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()
         assert entry.state is ConfigEntryState.NOT_LOADED
-        assert entry.entry_id not in hass.data[DOMAIN]
 
 
 @pytest.mark.parametrize(
-    ("exception", "error_message"),
+    ("exception", "expected_state"),
     [
-        (CannotConnect("Connection failed"), "Error communicating with API"),
-        (InvalidAuth("Auth failed"), "Authentication error"),
-        (SmartOilGaugeException("Unknown API error"), "Error fetching data"),
+        (CannotConnect("Connection failed"), ConfigEntryState.SETUP_RETRY),
+        (InvalidAuth("Auth failed"), ConfigEntryState.SETUP_ERROR),
+        (SmartOilGaugeException("Unknown API error"), ConfigEntryState.SETUP_RETRY),
     ],
 )
 async def test_setup_entry_failures(
-    hass: HomeAssistant, exception: Exception, error_message: str
+    hass: HomeAssistant, exception: Exception, expected_state: ConfigEntryState
 ) -> None:
     """Test setup errors inside coordinator update."""
     entry = MockConfigEntry(
@@ -87,7 +85,4 @@ async def test_setup_entry_failures(
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-        # ConfigEntryState should be SETUP_RETRY because
-        # coordinator.async_config_entry_first_refresh will raise
-        # UpdateFailed, causing ConfigEntryNotReady
-        assert entry.state is ConfigEntryState.SETUP_RETRY
+        assert entry.state is expected_state

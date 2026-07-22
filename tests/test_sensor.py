@@ -118,8 +118,10 @@ async def test_sensors_success(hass: HomeAssistant) -> None:
         assert battery_state.state == "Excellent"
         assert battery_state.attributes["icon"] == "mdi:battery"
 
-        # Check Last Checked Sensor
-        last_checked_state = hass.states.get("sensor.main_house_tank_last_checked")
+        # Check Last Portal Update Sensor
+        last_checked_state = hass.states.get(
+            "sensor.main_house_tank_last_portal_update"
+        )
         assert last_checked_state is not None
         assert last_checked_state.state != "unknown"
         assert last_checked_state.attributes["device_class"] == "timestamp"
@@ -313,3 +315,121 @@ async def test_sensors_invalid_level(hass: HomeAssistant) -> None:
         days_eighth_state = hass.states.get("sensor.main_house_tank_days_to_1_8")
         assert days_eighth_state is not None
         assert days_eighth_state.state == "unknown"
+
+
+async def test_sensors_dynamic_discovery_and_availability(
+    hass: HomeAssistant,
+) -> None:
+    """Test dynamic tank discovery and entity availability when tank disappears."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    tank1 = {
+        "tank_id": "12345",
+        "tank_name": "Main Tank",
+        "sensor_gallons": "100.0",
+        "nominal": "275",
+    }
+    tank2 = {
+        "tank_id": "67890",
+        "tank_name": "Garage Tank",
+        "sensor_gallons": "50.0",
+        "nominal": "150",
+    }
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[tank1],
+    ) as mock_get_tanks:
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Tank 1 level sensor exists and is available
+        t1_level = hass.states.get("sensor.main_tank_oil_level")
+        assert t1_level is not None
+        assert t1_level.state == "100.0"
+
+        # Tank 2 does not exist yet
+        t2_level = hass.states.get("sensor.garage_tank_oil_level")
+        assert t2_level is None
+
+        # Simulate update returning both Tank 1 and Tank 2
+        mock_get_tanks.return_value = [tank1, tank2]
+        coordinator = entry.runtime_data.coordinator
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
+        # Tank 2 level sensor was dynamically discovered and added
+        t2_level = hass.states.get("sensor.garage_tank_oil_level")
+        assert t2_level is not None
+        assert t2_level.state == "50.0"
+
+        # Simulate update where Tank 2 disappears
+        mock_get_tanks.return_value = [tank1]
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
+        # Tank 2 level sensor should now be unavailable
+        t2_level_after = hass.states.get("sensor.garage_tank_oil_level")
+        assert t2_level_after is not None
+        assert t2_level_after.state == "unavailable"
+
+
+async def test_sensors_refill_detection_and_runout_date(
+    hass: HomeAssistant,
+) -> None:
+    """Test estimated runout date and refill detection sensors."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    tank_initial = {
+        "tank_id": "12345",
+        "tank_name": "Main Tank",
+        "sensor_gallons": "50.0",
+        "nominal": "275",
+        "sensor_usg": "1.0",
+    }
+    tank_refilled = {
+        "tank_id": "12345",
+        "tank_name": "Main Tank",
+        "sensor_gallons": "200.0",  # +150 gallons
+        "nominal": "275",
+        "sensor_usg": "1.0",
+    }
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[tank_initial],
+    ) as mock_get_tanks:
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Runout date sensor should be valid (50 gal / 1.0 gal/day = 50 days)
+        runout_state = hass.states.get("sensor.main_tank_estimated_runout_date")
+        assert runout_state is not None
+        assert runout_state.state != "unknown"
+
+        # Refill sensors initially unknown
+        refill_amount = hass.states.get("sensor.main_tank_last_refill_amount")
+        assert refill_amount is not None
+        assert refill_amount.state == "unknown"
+
+        # Simulate update with refill
+        mock_get_tanks.return_value = [tank_refilled]
+        coordinator = entry.runtime_data.coordinator
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
+        refill_amount = hass.states.get("sensor.main_tank_last_refill_amount")
+        assert refill_amount is not None
+        assert refill_amount.state == "150.0"
+
+        refill_date = hass.states.get("sensor.main_tank_last_refill_date")
+        assert refill_date is not None
+        assert refill_date.state != "unknown"

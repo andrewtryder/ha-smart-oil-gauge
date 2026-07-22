@@ -1,4 +1,4 @@
-"""Placeholder binary_sensor platform for Smart Oil Gauge."""
+"""Binary sensor platform for Smart Oil Gauge."""
 
 from __future__ import annotations
 
@@ -6,43 +6,53 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
-from .coordinator import SmartOilGaugeDataUpdateCoordinator
+from .coordinator import (
+    SmartOilGaugeConfigEntry,
+    SmartOilGaugeDataUpdateCoordinator,
+)
 from .entity import SmartOilGaugeEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: SmartOilGaugeConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up binary_sensor platform."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator = data["coordinator"]
+    coordinator = entry.runtime_data.coordinator
 
-    # Setup Low Fuel alert binary sensors dynamically per tank
-    if not coordinator.data:
-        return
+    known_tank_ids: set[str] = set()
 
-    entities: list[BinarySensorEntity] = []
-    for tank in coordinator.data.values():
-        tank_id = str(tank.get("tank_id"))
-        tank_name = tank.get("tank_name", "Oil Tank")
-        entities.append(
-            SmartOilGaugeLowFuelBinarySensor(coordinator, tank_id, tank_name)
-        )
+    @callback
+    def _async_add_entities_for_tanks() -> None:
+        if not coordinator.data:
+            return
 
-    async_add_entities(entities)
+        new_entities: list[BinarySensorEntity] = []
+        for tank_id, tank in coordinator.data.items():
+            if tank_id in known_tank_ids:
+                continue
+            known_tank_ids.add(tank_id)
+            tank_name = tank.get("tank_name", "Oil Tank")
+            new_entities.append(
+                SmartOilGaugeLowFuelBinarySensor(coordinator, tank_id, tank_name)
+            )
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _async_add_entities_for_tanks()
+    entry.async_on_unload(coordinator.async_add_listener(_async_add_entities_for_tanks))
 
 
 class SmartOilGaugeLowFuelBinarySensor(SmartOilGaugeEntity, BinarySensorEntity):
     """Low fuel alert binary sensor representation."""
 
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_translation_key = "low_fuel_alert"
 
     def __init__(
         self,
@@ -52,7 +62,6 @@ class SmartOilGaugeLowFuelBinarySensor(SmartOilGaugeEntity, BinarySensorEntity):
     ) -> None:
         """Initialize binary sensor."""
         super().__init__(coordinator, tank_id, tank_name)
-        self._attr_name = "Low Fuel Alert"
         self._attr_unique_id = f"{tank_id}_low_fuel_alert"
 
     @property
