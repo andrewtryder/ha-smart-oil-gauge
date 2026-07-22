@@ -5,11 +5,19 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 
 from .coordinator import SmartOilGaugeConfigEntry
 
-TO_REDACT = {"username", "password", "user_pass", "ccf_nonce", "cookie", "cookies"}
+TO_REDACT = {
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    "user_pass",
+    "ccf_nonce",
+    "cookie",
+    "cookies",
+}
 
 
 async def async_get_config_entry_diagnostics(
@@ -20,19 +28,18 @@ async def async_get_config_entry_diagnostics(
 
     tanks_info: dict[str, Any] = {}
     if coordinator.data:
-        for tank_id, tank_data in coordinator.data.items():
-            tanks_info[tank_id] = {
-                "tank_id": tank_id,
-                "tank_name": tank_data.get("tank_name"),
+        for idx, tank_data in enumerate(coordinator.data.values(), start=1):
+            tanks_info[f"tank_{idx}"] = {
                 "has_sensor_gallons": tank_data.get("sensor_gallons") is not None,
                 "has_model_gallons": tank_data.get("model_gallons") is not None,
-                "nominal": tank_data.get("nominal"),
-                "battery": tank_data.get("battery"),
+                "has_nominal": tank_data.get("nominal") is not None,
+                "battery_status_available": tank_data.get("battery") is not None,
                 "has_usage_rate": tank_data.get("sensor_usg") is not None,
             }
 
     return {
-        "entry": async_redact_data(entry.as_dict(), TO_REDACT),
+        "entry_data": async_redact_data(dict(entry.data), TO_REDACT),
+        "entry_options": dict(entry.options),
         "coordinator_last_update_success": coordinator.last_update_success,
         "coordinator_last_successful_update": (
             coordinator.last_successful_update.isoformat()

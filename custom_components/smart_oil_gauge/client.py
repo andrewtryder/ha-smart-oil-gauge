@@ -40,6 +40,11 @@ class SmartOilGaugeClient:
         self.password = password
         self._headers = {"User-Agent": USER_AGENT}
 
+    async def async_close(self) -> None:
+        """Close the client session."""
+        if self._session and not self._session.closed:
+            await self._session.close()
+
     async def _async_fetch_login_nonce(self) -> str:
         """Fetch the login page and extract CSRF nonce."""
         _LOGGER.debug("Fetching login page to extract nonce")
@@ -204,8 +209,24 @@ class SmartOilGaugeClient:
             _LOGGER.error("Tanks payload is not a list")
             raise SmartOilGaugeException("Invalid tank data received from server")
 
-        valid_tanks = [
-            tank for tank in tanks if isinstance(tank, dict) and "tank_id" in tank
-        ]
+        valid_tanks: list[dict[str, Any]] = []
+        discarded_count = 0
+        for tank in tanks:
+            if not isinstance(tank, dict):
+                discarded_count += 1
+                continue
+            raw_id = tank.get("tank_id")
+            if raw_id is None or not str(raw_id).strip():
+                discarded_count += 1
+                continue
+            valid_tanks.append(tank)
+
+        if discarded_count > 0:
+            _LOGGER.warning("Discarded %d malformed tank records", discarded_count)
+
+        if tanks and not valid_tanks:
+            _LOGGER.error("All returned tank records were malformed")
+            raise SmartOilGaugeException("All returned tanks were malformed")
+
         _LOGGER.debug("Successfully fetched %d tanks", len(valid_tanks))
         return valid_tanks

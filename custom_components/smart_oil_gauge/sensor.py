@@ -47,7 +47,7 @@ def _get_level_value(
         return None
     try:
         return float(val)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         _LOGGER.warning("Could not convert level value '%s' to float", val)
         return None
 
@@ -67,7 +67,7 @@ def _get_percentage_value(
         if nominal_float <= 0:
             return None
         return round((gal_float / nominal_float) * 100.0, 1)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         _LOGGER.warning(
             "Could not calculate percentage from level '%s' and capacity '%s'",
             val,
@@ -105,7 +105,7 @@ def _get_daily_usage_value(
         return None
     try:
         return round(float(usg), 2)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         _LOGGER.warning("Could not convert daily usage rate '%s' to float", usg)
         return None
 
@@ -124,7 +124,7 @@ def _get_max_level_value(
         return None
     try:
         return float(nominal)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         _LOGGER.warning("Could not convert nominal value '%s' to float", nominal)
         return None
 
@@ -142,7 +142,7 @@ def _get_max_fill_value(
         gal = float(sensor_gallons)
         fillable_val = float(fillable)
         return max(0.0, fillable_val - gal)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         _LOGGER.warning(
             "Could not calculate max fill from gallons %s and fillable %s",
             sensor_gallons,
@@ -163,14 +163,14 @@ def _get_days_to_quarter_value(
     try:
         gal = float(sensor_gallons)
         daily_usage = float(usg)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         return None
     if abs(daily_usage) < 0.2:
         return None
     try:
         nominal = float(tank.get("nominal") or 275)
         low_level = float(tank.get("low_level") or 0.25)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         return None
     dtl = (gal - nominal * low_level) / daily_usage
     return max(0, round(dtl))
@@ -188,13 +188,13 @@ def _get_days_to_eighth_value(
     try:
         gal = float(sensor_gallons)
         daily_usage = float(usg)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         return None
     if abs(daily_usage) < 0.2:
         return None
     try:
         nominal = float(tank.get("nominal") or 275)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         return None
     dte = (gal - nominal * 0.125) / daily_usage
     return max(0, round(dte))
@@ -212,7 +212,7 @@ def _get_estimated_runout_date_value(
     try:
         gal = float(val)
         daily_usage = float(usg)
-    except ValueError:
+    except (TypeError, ValueError, OverflowError):
         return None
     if daily_usage <= 0.05:
         return None
@@ -223,7 +223,10 @@ def _get_estimated_runout_date_value(
 def _get_last_refill_amount_value(
     tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
 ) -> float | None:
-    tank_id = str(tank.get("tank_id"))
+    raw_id = tank.get("tank_id")
+    if raw_id is None:
+        return None
+    tank_id = str(raw_id).strip()
     refill = coordinator.last_refills.get(tank_id)
     if not refill:
         return None
@@ -233,7 +236,10 @@ def _get_last_refill_amount_value(
 def _get_last_refill_date_value(
     tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
 ) -> datetime | None:
-    tank_id = str(tank.get("tank_id"))
+    raw_id = tank.get("tank_id")
+    if raw_id is None:
+        return None
+    tank_id = str(raw_id).strip()
     refill = coordinator.last_refills.get(tank_id)
     if not refill:
         return None

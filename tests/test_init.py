@@ -1,6 +1,6 @@
 """Tests for Smart Oil Gauge integration lifecycle setup and unload."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntryState
@@ -48,13 +48,17 @@ async def test_setup_unload_entry(hass: HomeAssistant) -> None:
         assert entry.state is ConfigEntryState.LOADED
         assert entry.runtime_data is not None
 
+        client = entry.runtime_data.client
+        client.async_close = AsyncMock()
+
         coordinator = entry.runtime_data.coordinator
         assert list(coordinator.data.values()) == MOCK_TANK_DATA
 
-        # Test unloading
+        # Test unloading closes client session
         await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()
         assert entry.state is ConfigEntryState.NOT_LOADED
+        assert client.async_close.called
 
 
 @pytest.mark.parametrize(
@@ -78,11 +82,18 @@ async def test_setup_entry_failures(
     )
     entry.add_to_hass(hass)
 
-    with patch(
-        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
-        side_effect=exception,
+    with (
+        patch(
+            "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+            side_effect=exception,
+        ),
+        patch(
+            "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_close",
+            new_callable=AsyncMock,
+        ) as mock_close,
     ):
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
         assert entry.state is expected_state
+        assert mock_close.called

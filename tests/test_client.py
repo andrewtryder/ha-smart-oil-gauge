@@ -312,3 +312,77 @@ async def test_async_get_tanks_schema_validation(mock_session) -> None:
     tanks = await client.async_get_tanks()
     assert len(tanks) == 1
     assert tanks[0]["tank_id"] == "123"
+
+
+@pytest.mark.asyncio
+async def test_async_close(mock_session) -> None:
+    """Test closing client session."""
+    mock_session.closed = False
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    await client.async_close()
+    assert mock_session.close.called
+
+
+@pytest.mark.asyncio
+async def test_async_get_tanks_all_malformed(mock_session) -> None:
+    """Test exception raised when all returned tanks are malformed."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    client._session.cookie_jar.update_cookies({"PHPSESSID": "test_session_id"})
+
+    mock_session.post.return_value = MockResponse(
+        json_data={
+            "result": "ok",
+            "tanks": [
+                {"tank_id": None, "tank_name": "Null ID"},
+                {"tank_id": "  ", "tank_name": "Blank ID"},
+            ],
+        },
+        status=200,
+    )
+    with pytest.raises(
+        SmartOilGaugeException, match="All returned tanks were malformed"
+    ):
+        await client.async_get_tanks()
+
+
+@pytest.mark.asyncio
+async def test_async_fetch_login_nonce_missing(mock_session) -> None:
+    """Test missing nonce in login HTML."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    mock_session.get.return_value = MockResponse(
+        text="<html><body>No nonce here</body></html>", status=200
+    )
+    with pytest.raises(
+        CannotConnect, match="CSRF token ccf_nonce not found in page HTML"
+    ):
+        await client.async_login()
+
+
+@pytest.mark.asyncio
+async def test_async_get_tanks_timeout_and_network_error(mock_session) -> None:
+    """Test timeout and client error during get_tanks AJAX call."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    client._session.cookie_jar.update_cookies({"PHPSESSID": "test_session_id"})
+
+    # TimeoutError
+    mock_session.post.side_effect = TimeoutError()
+    with pytest.raises(CannotConnect, match="Timeout fetching tanks"):
+        await client.async_get_tanks()
+
+    # aiohttp.ClientError
+    mock_session.post.side_effect = aiohttp.ClientError()
+    with pytest.raises(CannotConnect):
+        await client.async_get_tanks()
+
+
+@pytest.mark.asyncio
+async def test_async_get_tanks_repeated_unauthorized(mock_session) -> None:
+    """Test repeated unauthorized error raises InvalidAuth."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    client._session.cookie_jar.update_cookies({"PHPSESSID": "test_session_id"})
+
+    mock_session.post.return_value = MockResponse(json_data={"Status": 401}, status=200)
+    mock_session.get.return_value = MockResponse(text=LOGIN_HTML_SUCCESS, status=200)
+
+    with pytest.raises(InvalidAuth, match="Session authorization failed"):
+        await client.async_get_tanks(retry_login=False)

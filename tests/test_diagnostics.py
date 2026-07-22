@@ -23,9 +23,10 @@ MOCK_TANK_DATA = [
 
 
 async def test_async_get_config_entry_diagnostics(hass: HomeAssistant) -> None:
-    """Test diagnostics output generation and redaction."""
+    """Test diagnostics output generation, anonymization, and redaction."""
     entry = MockConfigEntry(
         domain=DOMAIN,
+        unique_id="test@example.com",
         data={
             "username": "test@example.com",
             "password": "secret_password",
@@ -42,8 +43,11 @@ async def test_async_get_config_entry_diagnostics(hass: HomeAssistant) -> None:
 
         diag = await async_get_config_entry_diagnostics(hass, entry)
 
-        assert diag["entry"]["data"]["password"] == "**REDACTED**"
-        assert diag["entry"]["data"]["username"] == "**REDACTED**"
+        assert diag["entry_data"]["password"] == "**REDACTED**"
+        assert diag["entry_data"]["username"] == "**REDACTED**"
+        assert "unique_id" not in diag
         assert diag["tanks_count"] == 1
-        assert "12345" in diag["tanks"]
-        assert diag["tanks"]["12345"]["tank_name"] == "Main House Tank"
+        assert "tank_1" in diag["tanks"]
+        assert "12345" not in diag["tanks"]
+        assert "tank_name" not in diag["tanks"]["tank_1"]
+        assert diag["tanks"]["tank_1"]["has_sensor_gallons"] is True

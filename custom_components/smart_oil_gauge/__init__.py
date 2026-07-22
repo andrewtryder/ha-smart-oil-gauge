@@ -43,30 +43,26 @@ async def async_setup_entry(
     )
 
     coordinator = SmartOilGaugeDataUpdateCoordinator(
-        hass, client, update_interval_hours
+        hass, client, update_interval_hours, entry.entry_id
     )
 
-    # Initial data fetch during setup
-    await coordinator.async_config_entry_first_refresh()
-
-    entry.runtime_data = SmartOilGaugeData(client=client, coordinator=coordinator)
-
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    try:
+        # Initial data fetch during setup
+        await coordinator.async_config_entry_first_refresh()
+        entry.runtime_data = SmartOilGaugeData(client=client, coordinator=coordinator)
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    except Exception:
+        await client.async_close()
+        raise
 
     return True
-
-
-async def async_reload_entry(
-    hass: HomeAssistant, entry: SmartOilGaugeConfigEntry
-) -> None:
-    """Reload config entry when options are updated."""
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(
     hass: HomeAssistant, entry: SmartOilGaugeConfigEntry
 ) -> bool:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        await entry.runtime_data.client.async_close()
+    return unload_ok
