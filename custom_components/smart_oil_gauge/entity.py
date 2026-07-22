@@ -27,6 +27,11 @@ class SmartOilGaugeEntity(CoordinatorEntity[SmartOilGaugeDataUpdateCoordinator])
         self._attr_has_entity_name = True
 
     @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return super().available and self._get_tank_data() is not None
+
+    @property
     def device_info(self) -> DeviceInfo:
         """Return device registry info for this tank."""
         return DeviceInfo(
@@ -34,6 +39,7 @@ class SmartOilGaugeEntity(CoordinatorEntity[SmartOilGaugeDataUpdateCoordinator])
             name=self.tank_name,
             manufacturer="Connected Consumer Fuel",
             model="Smart Oil Gauge",
+            configuration_url="https://app.smartoilgauge.com",
         )
 
     def _get_tank_data(self) -> dict[str, Any] | None:

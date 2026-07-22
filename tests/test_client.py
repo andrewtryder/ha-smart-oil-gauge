@@ -210,3 +210,105 @@ async def test_async_get_tanks_server_error(mock_session) -> None:
 
     with pytest.raises(SmartOilGaugeException):
         await client.async_get_tanks()
+
+
+@pytest.mark.asyncio
+async def test_async_login_http_auth_error(mock_session) -> None:
+    """Test login failure on 401/403 HTTP status."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    mock_session.get.return_value = MockResponse(status=401)
+
+    with pytest.raises(InvalidAuth):
+        await client.async_login()
+
+
+@pytest.mark.asyncio
+async def test_async_login_rate_limit(mock_session) -> None:
+    """Test login rate-limiting (429)."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    resp = MockResponse(status=429)
+    resp.headers = {"Retry-After": "60"}
+    mock_session.get.return_value = resp
+
+    with pytest.raises(CannotConnect, match="Rate limit exceeded"):
+        await client.async_login()
+
+
+@pytest.mark.asyncio
+async def test_async_login_timeout(mock_session) -> None:
+    """Test login timeout handling."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    mock_session.get.side_effect = TimeoutError()
+
+    with pytest.raises(CannotConnect, match="Timeout connecting to portal"):
+        await client.async_login()
+
+
+@pytest.mark.asyncio
+async def test_async_get_tanks_http_status_errors(mock_session) -> None:
+    """Test AJAX status code handling for 429 and 500."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    client._session.cookie_jar.update_cookies({"PHPSESSID": "test_session_id"})
+
+    # 429
+    mock_session.post.return_value = MockResponse(status=429)
+    with pytest.raises(CannotConnect, match="Rate limit exceeded"):
+        await client.async_get_tanks()
+
+    # 500
+    mock_session.post.return_value = MockResponse(status=500)
+    with pytest.raises(CannotConnect, match="Server error from portal"):
+        await client.async_get_tanks()
+
+
+@pytest.mark.asyncio
+async def test_async_get_tanks_invalid_json(mock_session) -> None:
+    """Test handling invalid JSON in AJAX response."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    client._session.cookie_jar.update_cookies({"PHPSESSID": "test_session_id"})
+
+    resp = MockResponse(text="Not JSON", status=200)
+    resp.json = MagicMock(side_effect=aiohttp.ContentTypeError(None, None))
+    mock_session.post.return_value = resp
+
+    with pytest.raises(CannotConnect, match="Invalid JSON response from server"):
+        await client.async_get_tanks()
+
+
+@pytest.mark.asyncio
+async def test_async_get_tanks_schema_validation(mock_session) -> None:
+    """Test schema validation for non-dict data or invalid tanks structure."""
+    client = SmartOilGaugeClient(mock_session, "test@example.com", "password")
+    client._session.cookie_jar.update_cookies({"PHPSESSID": "test_session_id"})
+
+    # Non-dict data
+    mock_session.post.return_value = MockResponse(json_data=["invalid"], status=200)
+    with pytest.raises(
+        CannotConnect, match="Unexpected response structure from server"
+    ):
+        await client.async_get_tanks()
+
+    # Tanks is not a list
+    mock_session.post.return_value = MockResponse(
+        json_data={"result": "ok", "tanks": "not_a_list"}, status=200
+    )
+    with pytest.raises(
+        SmartOilGaugeException, match="Invalid tank data received from server"
+    ):
+        await client.async_get_tanks()
+
+    # Filtering out invalid tank items
+    mock_session.post.return_value = MockResponse(
+        json_data={
+            "result": "ok",
+            "tanks": [
+                {"tank_id": "123", "tank_name": "Valid"},
+                "invalid_string_tank",
+                {"no_tank_id": "456"},
+            ],
+        },
+        status=200,
+    )
+    tanks = await client.async_get_tanks()
+    assert len(tanks) == 1
+    assert tanks[0]["tank_id"] == "123"

@@ -1,6 +1,6 @@
-pytest
-pytest-homeassistant-custom-component
-pytest-cov
-pytest-asyncio
-ruff
-pre-commit
+pytest==9.0.3
+pytest-homeassistant-custom-component==0.13.346
+pytest-cov==7.1.0
+pytest-asyncio==1.4.0
+ruff==0.9.10
+pre-commit==4.1.0

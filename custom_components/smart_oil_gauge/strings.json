@@ -8,12 +8,86 @@
           "username": "Email Address",
           "password": "Password"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Smart Oil Gauge",
+        "description": "Please enter the updated password for {username}.",
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to the Smart Oil Gauge portal.",
       "invalid_auth": "Invalid email or password.",
       "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Smart Oil Gauge Options",
+        "data": {
+          "update_interval_hours": "Polling Interval (Hours)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "oil_level": {
+        "name": "Oil level"
+      },
+      "oil_percentage": {
+        "name": "Oil percentage"
+      },
+      "battery": {
+        "name": "Battery"
+      },
+      "daily_usage_rate": {
+        "name": "Daily usage rate"
+      },
+      "last_checked": {
+        "name": "Last checked"
+      },
+      "last_portal_update": {
+        "name": "Last portal update"
+      },
+      "max_level": {
+        "name": "Max level"
+      },
+      "max_fill": {
+        "name": "Max fill"
+      },
+      "days_to_quarter": {
+        "name": "Days to 1/4"
+      },
+      "days_to_eighth": {
+        "name": "Days to 1/8"
+      },
+      "estimated_runout_date": {
+        "name": "Estimated runout date"
+      },
+      "last_refill_amount": {
+        "name": "Last refill amount"
+      },
+      "last_refill_date": {
+        "name": "Last refill date"
+      }
+    },
+    "binary_sensor": {
+      "low_fuel_alert": {
+        "name": "Low fuel alert"
+      }
+    }
+  },
+  "issues": {
+    "api_breakage": {
+      "title": "Smart Oil Gauge Portal Structure Changed",
+      "description": "Home Assistant cannot parse data from the Smart Oil Gauge portal. The vendor web portal structure may have changed. Check for integration updates."
     }
   }
 }
