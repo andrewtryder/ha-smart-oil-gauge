@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.4...v1.6.0) (2026-07-22)
+
+
+### Features
+
+* quality scale and branding ([#40](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/40)) ([c442c92](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/c442c92136d8d81430d3219488f739a3518bf3af))
+
+
+### Bug Fixes
+
+* additional clean-ups ([#42](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/42)) ([8cd2c22](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/8cd2c22c13e5fbe900de6810c9aebfa5e7fe91f3))
+* translation strings ([#43](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/43)) ([802b649](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/802b6497805aafdb286a3f98274b36b871d19470))
+* update quality scale, docs, client log levels, and config flow normalization ([#44](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/44)) ([2558135](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/255813582f8b12e6d89397836808d1f966b2d811))
+
 ## [1.5.4](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.3...v1.5.4) (2026-07-22)
 
 
