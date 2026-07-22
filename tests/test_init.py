@@ -1,5 +1,6 @@
-"""Tests for Smart Oil Gauge integration lifecycle setup and unload."""
+"""Tests for Smart Oil Gauge integration lifecycle setup, unload, and removal."""
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -7,6 +8,10 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.smart_oil_gauge import (
+    async_remove_entry,
+    async_setup_entry,
+)
 from custom_components.smart_oil_gauge.client import (
     CannotConnect,
     InvalidAuth,
@@ -97,3 +102,48 @@ async def test_setup_entry_failures(
 
         assert entry.state is expected_state
         assert mock_close.called
+
+
+async def test_setup_entry_cancelled(hass: HomeAssistant) -> None:
+    """Test setup cancellation triggers client.async_close."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "username": "test@example.com",
+            "password": "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with (
+        patch(
+            "custom_components.smart_oil_gauge.coordinator.SmartOilGaugeDataUpdateCoordinator.async_config_entry_first_refresh",
+            side_effect=asyncio.CancelledError,
+        ),
+        patch(
+            "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_close",
+            new_callable=AsyncMock,
+        ) as mock_close,
+    ):
+        with pytest.raises(asyncio.CancelledError):
+            await async_setup_entry(hass, entry)
+
+        assert mock_close.called
+
+
+async def test_remove_entry(hass: HomeAssistant) -> None:
+    """Test removing an entry cleans up storage file and repair issue."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "username": "test@example.com",
+            "password": "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "homeassistant.helpers.storage.Store.async_remove", new_callable=AsyncMock
+    ) as mock_remove_store:
+        await async_remove_entry(hass, entry)
+        assert mock_remove_store.called

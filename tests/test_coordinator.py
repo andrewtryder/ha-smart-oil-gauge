@@ -1,6 +1,6 @@
 """Tests for Smart Oil Gauge update coordinator."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.issue_registry import async_get as async_get_issue_registry
@@ -90,12 +90,11 @@ async def test_coordinator_refill_persistence_and_mode_check(
     tank_model_high = {
         "tank_id": "12345",
         "sensor_gallons": None,
-        "model_gallons": "150.0",  # Jump from 50 -> 150 but different mode
-        "nominal": "275",
+        "model_gallons": "150.0",
     }
     tank_sensor_refilled = {
         "tank_id": "12345",
-        "sensor_gallons": "200.0",  # Jump from 50 -> 200 in same mode
+        "sensor_gallons": "200.0",
         "nominal": "275",
     }
 
@@ -130,3 +129,53 @@ async def test_coordinator_refill_persistence_and_mode_check(
         await new_coordinator._async_load_storage()
         assert "12345" in new_coordinator.last_refills
         assert new_coordinator.last_refills["12345"]["amount"] == 150.0
+
+
+async def test_coordinator_storage_load_failure_and_corrupt_data(
+    hass: HomeAssistant,
+) -> None:
+    """Test storage load failures preserve state and corrupt data is discarded."""
+    client = MagicMock()
+    coordinator = SmartOilGaugeDataUpdateCoordinator(hass, client, 6, "test_entry")
+
+    # Simulate load failure
+    coordinator._store.async_load = AsyncMock(side_effect=OSError("Read error"))
+    coordinator._store.async_save = AsyncMock()
+
+    await coordinator._async_load_storage()
+
+    # Loaded flag remains False and memory is empty
+    assert coordinator._storage_loaded is False
+    assert coordinator._previous_levels == {}
+
+    # Calling save skips disk overwrite
+    await coordinator._async_save_storage()
+    assert not coordinator._store.async_save.called
+
+    # Reset mock to test corrupt payload filtering
+    corrupt_data = {
+        "previous_levels": "invalid_not_a_dict",
+        "last_refills": {
+            "valid_tank": {
+                "amount": "100.0",
+                "timestamp": "2026-07-21T12:00:00+00:00",
+            },
+            "nan_amount_tank": {
+                "amount": "nan",
+                "timestamp": "2026-07-21T12:00:00+00:00",
+            },
+            "invalid_ts_tank": {
+                "amount": "50.0",
+                "timestamp": "invalid_date",
+            },
+            "not_a_dict_tank": "invalid_string",
+        },
+    }
+    coordinator._store.async_load = AsyncMock(return_value=corrupt_data)
+    await coordinator._async_load_storage()
+
+    assert coordinator._storage_loaded is True
+    assert "valid_tank" in coordinator.last_refills
+    assert "nan_amount_tank" not in coordinator.last_refills
+    assert "invalid_ts_tank" not in coordinator.last_refills
+    assert "not_a_dict_tank" not in coordinator.last_refills
