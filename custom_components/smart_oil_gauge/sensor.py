@@ -401,6 +401,282 @@ class SmartOilGaugeSensor(SmartOilGaugeEntity, SensorEntity):
     def icon(self) -> str | None:
         """Return dynamic or static icon."""
         tank = self._get_tank_data()
-        if self.entity_description.icon_fn and tank:
-            return self.entity_description.icon_fn(tank)
-        return self.entity_description.icon
+        if not tank:
+            return None
+
+        sensor_gallons = tank.get("sensor_gallons")
+        model_gallons = tank.get("model_gallons")
+
+        val = sensor_gallons if sensor_gallons is not None else model_gallons
+        nominal = tank.get("nominal")
+
+        if val is None or not nominal:
+            return None
+
+        try:
+            gal_float = float(val)
+            nominal_float = float(nominal)
+            if nominal_float <= 0:
+                return None
+            return round((gal_float / nominal_float) * 100.0, 1)
+        except ValueError:
+            _LOGGER.warning(
+                "Could not calculate percentage from level '%s' and capacity '%s'",
+                val,
+                nominal,
+            )
+            return None
+
+
+class SmartOilGaugeBatterySensor(SmartOilGaugeEntity, SensorEntity):
+    """Sensor for gauge battery status."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: SmartOilGaugeDataUpdateCoordinator,
+        tank_id: str,
+        tank_name: str,
+    ) -> None:
+        """Initialize battery sensor."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_name = "Battery"
+        self._attr_unique_id = f"{tank_id}_battery"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the battery status string."""
+        tank = self._get_tank_data()
+        if not tank:
+            return None
+
+        battery = tank.get("battery")
+        if battery is None:
+            return None
+        return str(battery)
+
+    @property
+    def icon(self) -> str:
+        """Return dynamic battery icon based on status."""
+        status = self.native_value
+        if status in ("Excellent", "Good"):
+            return "mdi:battery"
+        if status == "Fair":
+            return "mdi:battery-alert"
+        if status == "Poor":
+            return "mdi:battery-outline"
+        return "mdi:battery-unknown"
+
+
+class SmartOilGaugeDailyUsageRateSensor(SmartOilGaugeEntity, SensorEntity):
+    """Sensor for daily oil usage rate (rolling average)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:chart-line"
+
+    def __init__(
+        self,
+        coordinator: SmartOilGaugeDataUpdateCoordinator,
+        tank_id: str,
+        tank_name: str,
+    ) -> None:
+        """Initialize daily usage rate sensor."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_name = "Daily Usage Rate"
+        self._attr_unique_id = f"{tank_id}_daily_usage_rate"
+        self._attr_native_unit_of_measurement = "gal/day"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the state of the sensor."""
+        tank = self._get_tank_data()
+        if not tank:
+            return None
+
+        usg = tank.get("sensor_usg")
+        if usg is None:
+            return None
+
+        try:
+            return round(float(usg), 2)
+        except ValueError:
+            _LOGGER.warning("Could not convert daily usage rate '%s' to float", usg)
+            return None
+
+
+class SmartOilGaugeLastCheckedSensor(SmartOilGaugeEntity, SensorEntity):
+    """Sensor for the last time the gauge was successfully checked."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:clock-outline"
+
+    def __init__(
+        self,
+        coordinator: SmartOilGaugeDataUpdateCoordinator,
+        tank_id: str,
+        tank_name: str,
+    ) -> None:
+        """Initialize last checked sensor."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_name = "Last Checked"
+        self._attr_unique_id = f"{tank_id}_last_checked"
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the state of the sensor."""
+        return self.coordinator.last_successful_update
+
+
+class SmartOilGaugeMaxLevelSensor(SmartOilGaugeEntity, SensorEntity):
+    """Sensor for maximum level (nominal tank capacity)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = GALLONS
+    _attr_icon = "mdi:gauge-full"
+
+    def __init__(
+        self,
+        coordinator: SmartOilGaugeDataUpdateCoordinator,
+        tank_id: str,
+        tank_name: str,
+    ) -> None:
+        """Initialize max level sensor."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_name = "Max Level"
+        self._attr_unique_id = f"{tank_id}_max_level"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the state of the sensor."""
+        tank = self._get_tank_data()
+        if not tank:
+            return None
+
+        nominal = tank.get("nominal")
+        if nominal is None:
+            return None
+
+        try:
+            return float(nominal)
+        except ValueError:
+            _LOGGER.warning("Could not convert nominal value '%s' to float", nominal)
+            return None
+
+
+class SmartOilGaugeMaxFillSensor(SmartOilGaugeEntity, SensorEntity):
+    """Sensor for maximum fillable gallons (remaining capacity)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = GALLONS
+    _attr_icon = "mdi:gauge-empty"
+
+    def __init__(
+        self,
+        coordinator: SmartOilGaugeDataUpdateCoordinator,
+        tank_id: str,
+        tank_name: str,
+    ) -> None:
+        """Initialize max fill sensor."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_name = "Max Fill"
+        self._attr_unique_id = f"{tank_id}_max_fill"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the state of the sensor."""
+        tank = self._get_tank_data()
+        if not tank:
+            return None
+
+        sensor_gallons = tank.get("sensor_gallons")
+        if sensor_gallons is None:
+            return None
+
+        fillable = tank.get("fillable")
+        if fillable is None:
+            return None
+
+        try:
+            gal = float(sensor_gallons)
+            fillable_val = float(fillable)
+            return max(0.0, fillable_val - gal)
+        except ValueError:
+            _LOGGER.warning(
+                "Could not calculate max fill from gallons %s and fillable %s",
+                sensor_gallons,
+                fillable,
+            )
+            return None
+
+
+class SmartOilGaugeDaysToQuarterSensor(SmartOilGaugeEntity, SensorEntity):
+    """Sensor for number of days until the tank reaches 1/4 (low level)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "days"
+    _attr_icon = "mdi:calendar-clock"
+
+    def __init__(
+        self,
+        coordinator: SmartOilGaugeDataUpdateCoordinator,
+        tank_id: str,
+        tank_name: str,
+    ) -> None:
+        """Initialize days to 1/4 sensor."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_name = "Days to 1/4"
+        self._attr_unique_id = f"{tank_id}_days_to_quarter"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the state of the sensor."""
+        data = self._get_usage_calculation_data()
+        if not data:
+            return None
+        tank, gal, daily_usage = data
+
+        try:
+            nominal = float(tank.get("nominal") or 275)
+            low_level = float(tank.get("low_level") or 0.25)
+        except ValueError:
+            return None
+
+        dtl = (gal - nominal * low_level) / daily_usage
+        return max(0, round(dtl))
+
+
+class SmartOilGaugeDaysToEighthSensor(SmartOilGaugeEntity, SensorEntity):
+    """Sensor for number of days until the tank reaches 1/8."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "days"
+    _attr_icon = "mdi:calendar-clock"
+
+    def __init__(
+        self,
+        coordinator: SmartOilGaugeDataUpdateCoordinator,
+        tank_id: str,
+        tank_name: str,
+    ) -> None:
+        """Initialize days to 1/8 sensor."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_name = "Days to 1/8"
+        self._attr_unique_id = f"{tank_id}_days_to_eighth"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the state of the sensor."""
+        data = self._get_usage_calculation_data()
+        if not data:
+            return None
+        tank, gal, daily_usage = data
+
+        try:
+            nominal = float(tank.get("nominal") or 275)
+        except ValueError:
+            return None
+
+        dte = (gal - nominal * 0.125) / daily_usage
+        return max(0, round(dte))
