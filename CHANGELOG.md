@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.5.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.4.1...v1.5.0) (2026-07-22)
+
+
+### Features
+
+* add reauthentication flow, entity descriptions, diagnostics, refill detection, and repair notifications ([ed1905a](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/ed1905aae929f51f9684af38d3186887a794495c))
+
+
+### Bug Fixes
+
+* **ci:** adjust pytest-homeassistant-custom-component range for Python 3.13 ([51688ef](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/51688ef380553c19a2875536ae5c74631dae0903))
+* **ci:** loosen pytest-asyncio range for python 3.13 pip resolution ([12a340b](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/12a340ba27fd0bb4d144deac0ed6bd4558af4a5b))
+* **ci:** update workflow action commit SHAs to valid git references ([fc6ee1c](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/fc6ee1c0dbf816d0b0a0cad9477b028507751e87))
+* **sensor:** clean up duplicate obsolete sensor classes post-merge ([#31](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/31)) ([3df3b80](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/3df3b80e2c34d2142d1585e4e393f2d2f585fae9))
+
 ## [1.4.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.4.0...v1.4.1) (2026-07-04)
 
 
