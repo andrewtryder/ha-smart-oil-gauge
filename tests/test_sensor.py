@@ -433,3 +433,48 @@ async def test_sensors_refill_detection_and_runout_date(
         refill_date = hass.states.get("sensor.main_tank_last_refill_date")
         assert refill_date is not None
         assert refill_date.state != "unknown"
+
+
+async def test_sensors_edge_case_numeric_exceptions(hass: HomeAssistant) -> None:
+    """Test edge cases in numeric parsing for sensor metrics."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "test@example.com", "password": "test_password"},
+    )
+    entry.add_to_hass(hass)
+
+    tank_edge_cases = {
+        "tank_id": "12345",
+        "tank_name": "Main Tank",
+        "sensor_gallons": "100.0",
+        "nominal": "invalid_nominal",
+        "low_level": "invalid_low_level",
+        "sensor_usg": "0.01",  # Below 0.05 limit for runout date
+    }
+
+    with patch(
+        "custom_components.smart_oil_gauge.client.SmartOilGaugeClient.async_get_tanks",
+        return_value=[tank_edge_cases],
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Max level should be unknown due to invalid_nominal
+        max_level_state = hass.states.get("sensor.main_tank_max_level")
+        assert max_level_state is not None
+        assert max_level_state.state == "unknown"
+
+        # Days to quarter should be unknown due to low_level / nominal invalid
+        days_quarter_state = hass.states.get("sensor.main_tank_days_to_1_4")
+        assert days_quarter_state is not None
+        assert days_quarter_state.state == "unknown"
+
+        # Days to eighth should be unknown due to nominal invalid
+        days_eighth_state = hass.states.get("sensor.main_tank_days_to_1_8")
+        assert days_eighth_state is not None
+        assert days_eighth_state.state == "unknown"
+
+        # Runout date should be unknown due to usage <= 0.05
+        runout_state = hass.states.get("sensor.main_tank_estimated_runout_date")
+        assert runout_state is not None
+        assert runout_state.state == "unknown"
