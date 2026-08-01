@@ -10,7 +10,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/andrewtryder/ha-smart-oil-gauge/issues",
   "requirements": [
-    "beautifulsoup4==4.13.3"
+    "beautifulsoup4>=4.11.0"
   ],
   "version": "1.6.0"
 }
