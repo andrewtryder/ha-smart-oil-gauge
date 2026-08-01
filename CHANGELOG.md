@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.6.0...v1.6.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* export high-res brand assets, relax beautifulsoup4 pin, and bump ruff ([#51](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/51)) ([7f6abd4](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/7f6abd4d8ef4e3922a09ad7e1b4ca03f1709bdf7))
+
 ## [1.6.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.5.4...v1.6.0) (2026-07-22)
 
 
