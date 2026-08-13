@@ -3,10 +3,10 @@
 We welcome community contributions. Below are the guidelines for testing, running linters, and verifying your changes.
 
 ### 1. Local Python Environment Setup
-We use Python virtual environments to manage linter configurations and test suites locally:
+This project targets Python 3.14 (Home Assistant 2026.3+). We use Python virtual environments to manage linter configurations and test suites locally:
 ```bash
-# Initialize virtual environment
-python3 -m venv .venv
+# Initialize virtual environment (Python 3.14)
+python3.14 -m venv .venv
 
 # Install test and development dependencies
 .venv/bin/pip install -r requirements.txt

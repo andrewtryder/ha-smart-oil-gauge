@@ -27,9 +27,9 @@ You **must** follow the [Conventional Commits](https://www.conventionalcommits.o
 ## Local Development and Tooling
 
 ### Python Environment
-To test changes, you can set up a local virtual environment:
+This project targets Python 3.14 (Home Assistant 2026.3+). To test changes, set up a local virtual environment:
 ```bash
-python3 -m venv .venv
+python3.14 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/pip install -r requirements_test.txt
 ```
