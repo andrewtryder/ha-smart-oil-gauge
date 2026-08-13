@@ -45,7 +45,7 @@ This project enforces code styles and format rules using `ruff`. Run these check
 ```
 
 ### Pre-commit Hooks
-The project uses `pre-commit`. Always ensure you run pre-commit or ensure hooks pass:
+The project uses `pre-commit`. The Ruff hook revision in `.pre-commit-config.yaml` must match the `ruff==` pin in `requirements_test.txt` (same version CI installs). Always ensure you run pre-commit or ensure hooks pass:
 ```bash
 .venv/bin/pre-commit run --all-files
 ```
