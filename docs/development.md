@@ -3,34 +3,35 @@
 We welcome community contributions. Below are the guidelines for testing, running linters, and verifying your changes.
 
 ### 1. Local Python Environment Setup
-This project targets Python 3.14 (Home Assistant 2026.3+). We use Python virtual environments to manage linter configurations and test suites locally:
+This repository uses [`uv`](https://docs.astral.sh/uv/) for development dependency management and execution. It targets Python 3.14 (Home Assistant 2026.3+).
 ```bash
-# Initialize virtual environment (Python 3.14)
-python3.14 -m venv .venv
-
-# Install test and development dependencies
-.venv/bin/pip install -r requirements.txt
-.venv/bin/pip install pytest pytest-homeassistant-custom-component pytest-cov pytest-asyncio aresponses ruff pre-commit
+# Synchronize locked dependencies into virtual environment
+uv sync --locked
 ```
 
 ### 2. Pre-commit & Ruff Checks
-We enforce style checks and import sorting using `ruff`. Run them before submitting code:
+We enforce style checks and format rules using `ruff`. Run them before submitting code:
 ```bash
 # Install git hooks
-.venv/bin/pre-commit install
+uv run --locked pre-commit install
 
 # Run checks manually on all files
-.venv/bin/pre-commit run --all-files
+uv run --locked pre-commit run --all-files
+
+# Or run ruff directly
+uv run --locked ruff check .
+uv run --locked ruff format --check .
 ```
 
 ### 3. Running Unit Tests
-We use `pytest` combined with `pytest-homeassistant-custom-component` to run our test suite:
+We use `pytest` combined with `pytest-homeassistant-custom-component` and network isolation:
 ```bash
-.venv/bin/pytest
+# Run pytest with offline socket isolation
+uv run --locked pytest --disable-socket --allow-unix-socket -p no:cacheprovider
 ```
 To run tests with code coverage outputs:
 ```bash
-.venv/bin/pytest --cov=custom_components/smart_oil_gauge --cov-report=term-missing
+uv run --locked pytest --cov=custom_components/smart_oil_gauge --cov-report=term-missing --disable-socket --allow-unix-socket -p no:cacheprovider
 ```
 
 ### 4. Integration Core Verification (`hassfest`)

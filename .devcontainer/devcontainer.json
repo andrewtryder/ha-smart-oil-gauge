@@ -2,12 +2,13 @@
   "name": "Home Assistant Custom Component Development",
   "image": "mcr.microsoft.com/devcontainers/python:3.14-bookworm",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/eitsup/devcontainer-features/uv:1": {}
   },
   "remoteUser": "vscode",
   "containerEnv": {
     "PYTHONPATH": "${containerWorkspaceFolder}",
-    "PATH": "/home/vscode/.venv/bin:${containerEnv:PATH}"
+    "PATH": "${containerWorkspaceFolder}/.venv/bin:${containerEnv:PATH}"
   },
   "customizations": {
     "vscode": {
@@ -18,7 +19,7 @@
         "esbenp.prettier-vscode"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
         "python.testing.pytestEnabled": true,
         "python.testing.pytestArgs": [
           "tests"
@@ -33,6 +34,5 @@
   "forwardPorts": [
     8123
   ],
-  "onCreateCommand": "rm -rf ${containerWorkspaceFolder}/.venv",
-  "postCreateCommand": "python -m venv /home/vscode/.venv && /home/vscode/.venv/bin/pip install --upgrade pip && /home/vscode/.venv/bin/pip install -r requirements.txt -r requirements_test.txt && /home/vscode/.venv/bin/pre-commit install"
+  "postCreateCommand": "command -v uv >/dev/null 2>&1 || pip install uv && uv sync --locked && uv run --locked pre-commit install"
 }

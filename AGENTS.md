@@ -27,33 +27,31 @@ You **must** follow the [Conventional Commits](https://www.conventionalcommits.o
 ## Local Development and Tooling
 
 ### Python Environment
-This project targets Python 3.14 (Home Assistant 2026.3+). To test changes, set up a local virtual environment:
+This project targets Python 3.14 (Home Assistant 2026.3+) and uses `uv` for development dependency management:
 ```bash
-python3.14 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/pip install -r requirements_test.txt
+uv sync --locked
 ```
 
 ### Formatting and Linting (Ruff)
 This project enforces code styles and format rules using `ruff`. Run these checks locally before committing changes:
 ```bash
 # Run styling checks
-.venv/bin/ruff check custom_components/ tests/
+uv run --locked ruff check .
 
 # Auto-format files
-.venv/bin/ruff format custom_components/ tests/
+uv run --locked ruff format .
 ```
 
 ### Pre-commit Hooks
-The project uses `pre-commit`. The Ruff hook revision in `.pre-commit-config.yaml` must match the `ruff==` pin in `requirements_test.txt` (same version CI installs). Always ensure you run pre-commit or ensure hooks pass:
+The project uses `pre-commit`. Always ensure you run pre-commit or ensure hooks pass:
 ```bash
-.venv/bin/pre-commit run --all-files
+uv run --locked pre-commit run --all-files
 ```
 
 ### Testing (Pytest)
-Tests are written with `pytest`. Run the test suite to verify your changes and check coverage:
+Tests are written with `pytest`. Run the test suite with offline network isolation to verify your changes and check coverage:
 ```bash
-PYTHONPATH=. .venv/bin/pytest --cov=custom_components/smart_oil_gauge --cov-report=term-missing
+uv run --locked pytest --disable-socket --allow-unix-socket -p no:cacheprovider
 ```
 
 ### Hassfest Validation
