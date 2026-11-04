@@ -20,7 +20,13 @@ uv run --locked pre-commit install
 
 ## Styling and Quality Checks
 
-We use `ruff` to enforce code styles and format rules. Run these checks locally before committing changes:
+The portfolio standard validation interface executes the entire local test, linting, and hygiene contract:
+
+```bash
+./scripts/validate-local.sh
+```
+
+Individual styling checks can also be run manually using `ruff`:
 
 ```bash
 # Run styling checks
