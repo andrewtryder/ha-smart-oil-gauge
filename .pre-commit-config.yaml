@@ -7,9 +7,10 @@ repos:
       - id: check-yaml
       - id: check-json
       - id: check-added-large-files
+        args: ['--maxkb=1000']
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.9 # keep in sync with ruff pin in requirements_test.txt
+    rev: v0.16.9 # keep in sync with ruff pin in pyproject.toml dev group
     hooks:
       - id: ruff-check
         args: [ --fix ]

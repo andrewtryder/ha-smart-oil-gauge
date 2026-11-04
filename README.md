@@ -106,6 +106,24 @@ The polling interval is configurable from **1 to 24 hours**, with **6 hours** as
 
 Deleting the integration also removes its locally stored refill history and related repair notifications.
 
+## Development
+
+This repository uses [`uv`](https://docs.astral.sh/uv/) for development dependency management and validation.
+
+```bash
+# Install dependencies into virtual environment
+uv sync --locked
+
+# Run linting and formatting checks
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+
+# Run test suite with offline network isolation
+uv run --locked pytest --disable-socket --allow-unix-socket -p no:cacheprovider
+```
+
+For detailed contributing guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 This project is licensed under the MIT License.

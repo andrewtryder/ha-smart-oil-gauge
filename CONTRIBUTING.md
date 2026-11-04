@@ -4,20 +4,18 @@ We welcome contributions to this integration! Please review these guidelines bef
 
 ## Local Development Setup
 
+This repository uses [`uv`](https://docs.astral.sh/uv/) for development dependency management and execution.
+
 To set up a local development environment, you can use Visual Studio Code and Docker to run inside the devcontainer (configured in `.devcontainer/devcontainer.json`). This sets up Python, Home Assistant core libraries, and linters automatically.
 
-Alternatively, you can initialize a local environment:
+Alternatively, you can initialize a local environment directly:
 
 ```bash
-# Set up virtual environment
-python3 -m venv .venv
-
-# Install dependencies
-.venv/bin/pip install -r requirements.txt
-.venv/bin/pip install -r requirements_test.txt
+# Synchronize locked dependencies into virtual environment
+uv sync --locked
 
 # Install pre-commit hooks
-.venv/bin/pre-commit install
+uv run --locked pre-commit install
 ```
 
 ## Styling and Quality Checks
@@ -26,10 +24,13 @@ We use `ruff` to enforce code styles and format rules. Run these checks locally 
 
 ```bash
 # Run styling checks
-.venv/bin/ruff check custom_components/ tests/
+uv run --locked ruff check .
+
+# Check formatting
+uv run --locked ruff format --check .
 
 # Auto-format files
-.venv/bin/ruff format custom_components/ tests/
+uv run --locked ruff format .
 ```
 
 We also validate custom component structures against core guidelines using `hassfest`:
@@ -40,11 +41,11 @@ docker run --rm -v "$(pwd)/custom_components:/github/workspace/custom_components
 
 ## Testing
 
-We use `pytest` for unit testing. Write test cases for any new functionality and verify they pass with code coverage:
+We use `pytest` for unit testing with network isolation. Write test cases for any new functionality and verify they pass with code coverage:
 
 ```bash
-# Run pytest
-PYTHONPATH=. .venv/bin/pytest --cov=custom_components/smart_oil_gauge --cov-report=term-missing
+# Run pytest with offline socket isolation
+uv run --locked pytest --disable-socket --allow-unix-socket -p no:cacheprovider
 ```
 
 ## Submitting Pull Requests
