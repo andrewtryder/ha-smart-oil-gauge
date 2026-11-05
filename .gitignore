@@ -1,7 +1,23 @@
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pre-commit-cache/
 .coverage
+.coverage.*
 coverage.xml
+coverage.json
 htmlcov/
+*.egg-info/
+.DS_Store
+
+# Local secrets and Home Assistant runtime state
+.env
+.env.*
+!.env.example
+.storage/
+*config_entries*
+home-assistant.log*
+home-assistant_v2.db*
