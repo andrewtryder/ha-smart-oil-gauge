@@ -22,11 +22,13 @@ Runout dates and usage are estimates based on available data; check your tank an
 
 ## Requirements and compatibility
 
-You need Home Assistant with HACS, a [Smart Oil Gauge portal account](https://app.smartoilgauge.com), and at least one tank already linked to that account. This integration reads the vendor portal over the internet; it supports multiple tanks on the same account.
+You need Home Assistant with HACS (or the built-in Home Assistant Marketplace in **2026.11+**), a [Smart Oil Gauge portal account](https://app.smartoilgauge.com), and at least one tank already linked to that account. This integration reads the vendor portal over the internet; it supports multiple tanks on the same account.
 
-## Install with HACS
+## Install with HACS or Home Assistant Marketplace
 
-1. In HACS, add `https://github.com/andrewtryder/ha-smart-oil-gauge` as a custom repository in the **Integration** category, or use the HACS badge above.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrewtryder&repository=ha-smart-oil-gauge&category=integration)
+
+1. Click the **Open your Home Assistant instance** button above (backwards compatible: opens **HACS** on earlier versions and the built-in **Home Assistant Marketplace** on **2026.11+**), or manually add `https://github.com/andrewtryder/ha-smart-oil-gauge` as a custom repository in the **Integration** category.
 2. Find and install **Smart Oil Gauge**.
 3. Restart Home Assistant.
 
