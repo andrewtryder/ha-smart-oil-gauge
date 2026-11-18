@@ -39,12 +39,16 @@
     "step": {
       "init": {
         "title": "Smart Oil Gauge Options",
-        "description": "Configure background polling frequency for Smart Oil Gauge.",
+        "description": "Configure polling and history backfill for Smart Oil Gauge.",
         "data": {
-          "update_interval_hours": "Polling Interval (Hours)"
+          "update_interval_hours": "Polling Interval (Hours)",
+          "backfill_states": "Backfill sensor history",
+          "import_history": "Import history when first set up"
         },
         "data_description": {
-          "update_interval_hours": "Frequency in hours to fetch new sensor data from the Smart Oil Gauge portal (1-24 hours). Recommended range is 6 to 12 hours."
+          "update_interval_hours": "How often to check the portal for a new upload (1-24 hours). Checking the portal does not use the gauge's battery. Missed hourly readings are filled in at their real times, so a longer interval only delays when new readings appear.",
+          "backfill_states": "Write the hourly readings the gauge uploads in batches into Home Assistant's state history at their real times, so the built-in history graphs show every hour. Long-term statistics are always updated.",
+          "import_history": "On first setup, download the gauge's full hourly history from the portal and add it to Home Assistant. You can run it again at any time with the Import history button."
         }
       }
     }
@@ -85,15 +89,28 @@
         "name": "Estimated runout date"
       },
       "last_refill_amount": {
-        "name": "Last refill amount"
+        "name": "Last refill amount",
+        "state_attributes": {
+          "in_progress": {
+            "name": "Refill in progress"
+          }
+        }
       },
       "last_refill_date": {
         "name": "Last refill date"
+      },
+      "last_read": {
+        "name": "Last read"
       }
     },
     "binary_sensor": {
       "low_fuel_alert": {
         "name": "Low fuel alert"
+      }
+    },
+    "button": {
+      "import_history": {
+        "name": "Import history"
       }
     }
   },

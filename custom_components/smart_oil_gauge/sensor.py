@@ -39,6 +39,13 @@ class SmartOilGaugeSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[dict[str, Any], SmartOilGaugeDataUpdateCoordinator], Any]
     icon_fn: Callable[[dict[str, Any]], str] | None = None
+    attrs_fn: (
+        Callable[
+            [dict[str, Any], SmartOilGaugeDataUpdateCoordinator],
+            dict[str, Any] | None,
+        ]
+        | None
+    ) = None
 
 
 def _get_level_value(
@@ -115,6 +122,24 @@ def _get_last_checked_value(
     tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
 ) -> datetime | None:
     return coordinator.last_successful_update
+
+
+def _get_last_read_value(
+    tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
+) -> datetime | None:
+    last_read = parse_finite_float(tank.get("last_read"))
+    if last_read is None or last_read <= 0:
+        return None
+    return dt_util.utc_from_timestamp(last_read)
+
+
+def _get_refill_attrs(
+    tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
+) -> dict[str, Any] | None:
+    refill = coordinator.last_refills.get(str(tank.get("tank_id", "")).strip())
+    if not refill:
+        return None
+    return {"in_progress": bool(refill.get("in_progress", False))}
 
 
 def _get_max_level_value(
@@ -278,6 +303,13 @@ SENSOR_TYPES: tuple[SmartOilGaugeSensorEntityDescription, ...] = (
         value_fn=_get_last_checked_value,
     ),
     SmartOilGaugeSensorEntityDescription(
+        key="last_read",
+        translation_key="last_read",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        icon="mdi:clock-check-outline",
+        value_fn=_get_last_read_value,
+    ),
+    SmartOilGaugeSensorEntityDescription(
         key="max_level",
         translation_key="max_level",
         native_unit_of_measurement=UnitOfVolume.GALLONS,
@@ -323,6 +355,7 @@ SENSOR_TYPES: tuple[SmartOilGaugeSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:fuel",
         value_fn=_get_last_refill_amount_value,
+        attrs_fn=_get_refill_attrs,
     ),
     SmartOilGaugeSensorEntityDescription(
         key="last_refill_date",
@@ -393,6 +426,16 @@ class SmartOilGaugeSensor(SmartOilGaugeEntity, SensorEntity):
         if not tank:
             return None
         return self.entity_description.value_fn(tank, self.coordinator)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra attributes, such as whether a refill is in progress."""
+        if not self.entity_description.attrs_fn:
+            return None
+        tank = self._get_tank_data()
+        if not tank:
+            return None
+        return self.entity_description.attrs_fn(tank, self.coordinator)
 
     @property
     def icon(self) -> str | None:

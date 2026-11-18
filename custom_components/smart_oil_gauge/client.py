@@ -2,6 +2,7 @@
 
 import json
 import logging
+from datetime import date
 from typing import Any
 
 import aiohttp
@@ -13,7 +14,9 @@ _LOGGER = logging.getLogger(__name__)
 
 LOGIN_URL = "https://app.smartoilgauge.com/login.php"
 AJAX_URL = "https://app.smartoilgauge.com/ajax/main_ajax.php"
+EXPORT_URL = "https://app.smartoilgauge.com/export_data.php"
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
+HISTORY_TIMEOUT = aiohttp.ClientTimeout(total=90)
 
 
 class SmartOilGaugeException(Exception):
@@ -230,3 +233,97 @@ class SmartOilGaugeClient:
 
         _LOGGER.debug("Successfully fetched %d tanks", len(valid_tanks))
         return valid_tanks
+
+    def _ajax_headers(self) -> dict[str, str]:
+        return {
+            **self._headers,
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": "https://app.smartoilgauge.com/app.php",
+        }
+
+    async def async_get_graph_data(
+        self, tank_id: str, data_servers: str, retry_login: bool = True
+    ) -> dict[str, Any]:
+        """Fetch the hourly graph datasets (today, week, month, year) for a tank."""
+        payload = {
+            "action": "get_graph_data",
+            "tank_id": tank_id,
+            "data_servers": data_servers,
+        }
+        try:
+            async with self._session.post(
+                AJAX_URL,
+                data=payload,
+                headers=self._ajax_headers(),
+                timeout=HISTORY_TIMEOUT,
+            ) as r:
+                if r.status in (401, 403) and retry_login:
+                    await self.async_login()
+                    return await self.async_get_graph_data(
+                        tank_id, data_servers, retry_login=False
+                    )
+                self._check_http_status(r.status, r.headers.get("Retry-After"))
+                try:
+                    data = self._process_json_payload(await r.json(content_type=None))
+                except (json.JSONDecodeError, aiohttp.ContentTypeError) as ex:
+                    raise CannotConnect("Invalid graph data response") from ex
+        except TimeoutError as ex:
+            raise CannotConnect("Timeout fetching graph data") from ex
+        except aiohttp.ClientError as ex:
+            raise CannotConnect from ex
+
+        if data.get("result") != "ok":
+            message = str(data.get("message") or "")
+            if retry_login and "Access Denied" in message:
+                await self.async_login()
+                return await self.async_get_graph_data(
+                    tank_id, data_servers, retry_login=False
+                )
+            raise SmartOilGaugeException(f"Graph data error: {message or data}")
+        return data
+
+    async def async_export_history(
+        self,
+        registration_id: str,
+        start: date,
+        end: date,
+        retry_login: bool = True,
+    ) -> str:
+        """Download the hourly CSV export for a sensor registration.
+
+        ``end`` is exclusive. The portal accepts ranges of up to two years.
+        """
+        form = {
+            "registration_id": registration_id,
+            "startdate": start.isoformat(),
+            "enddate": end.isoformat(),
+        }
+        try:
+            async with self._session.post(
+                EXPORT_URL,
+                params={"registration_id": registration_id},
+                data=form,
+                headers=self._headers,
+                timeout=HISTORY_TIMEOUT,
+            ) as r:
+                if r.status in (401, 403) and retry_login:
+                    await self.async_login()
+                    return await self.async_export_history(
+                        registration_id, start, end, retry_login=False
+                    )
+                self._check_http_status(r.status, r.headers.get("Retry-After"))
+                text = await r.text()
+        except TimeoutError as ex:
+            raise CannotConnect("Timeout exporting history") from ex
+        except aiohttp.ClientError as ex:
+            raise CannotConnect from ex
+
+        if not text.lstrip().lower().startswith("time,gallons"):
+            if retry_login:
+                _LOGGER.debug("Export did not return CSV; logging in again")
+                await self.async_login()
+                return await self.async_export_history(
+                    registration_id, start, end, retry_login=False
+                )
+            raise SmartOilGaugeException("Export did not return CSV data")
+        return text

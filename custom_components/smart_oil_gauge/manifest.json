@@ -1,6 +1,9 @@
 {
   "domain": "smart_oil_gauge",
   "name": "Smart Oil Gauge",
+  "after_dependencies": [
+    "recorder"
+  ],
   "codeowners": [
     "@andrewtryder"
   ],
