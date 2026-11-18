@@ -516,6 +516,39 @@ class SmartOilGaugeDataUpdateCoordinator(
             if await self._async_run_jobs(tank_id, jobs):
                 self.backfilled_until[tank_id] = last_read
                 await self._async_save_storage()
+            self._log_backfill(tank_id, series, start, last_read)
+
+    def _log_backfill(
+        self, tank_id: str, series: Series, start: float, last_read: float
+    ) -> None:
+        """Log one line per upload so users can see the backfill working."""
+        status = self.backfill_status.get(tank_id, {})
+        name = (self.data or {}).get(tank_id, {}).get("tank_name") or tank_id
+        upload = dt_util.as_local(dt_util.utc_from_timestamp(last_read))
+        new_readings = sum(1 for ts, _ in series if start < ts <= last_read)
+        if "error" in status:
+            return  # Already logged as a warning or error.
+        if status.get("waiting_for"):
+            _LOGGER.info(
+                "%s: upload at %s; %d new hourly readings waiting for %s to "
+                "appear in the recorder, will retry on the next poll",
+                name,
+                upload.strftime("%Y-%m-%d %H:%M"),
+                new_readings,
+                ", ".join(status["waiting_for"]),
+            )
+            return
+        _LOGGER.info(
+            "%s: upload at %s; %d new hourly readings (%d in the last 7 days); "
+            "history rows added %d, corrected %d; statistics hours updated %d",
+            name,
+            upload.strftime("%Y-%m-%d %H:%M"),
+            new_readings,
+            len(series),
+            status.get("inserted", 0),
+            status.get("corrected", 0),
+            status.get("statistics_hours", 0),
+        )
 
     async def async_start_initial_import(self) -> None:
         """Run after setup: finish pending backfills, then first-time imports.

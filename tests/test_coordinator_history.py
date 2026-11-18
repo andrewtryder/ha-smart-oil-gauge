@@ -137,7 +137,9 @@ async def test_recorder_ready_checks(hass: HomeAssistant) -> None:
         recorder_ready(hass)
 
 
-async def test_poll_merges_week_and_backfills(hass: HomeAssistant, no_writes) -> None:
+async def test_poll_merges_week_and_backfills(
+    hass: HomeAssistant, no_writes, caplog
+) -> None:
     """A new upload fetches the week, detects the refill, and backfills."""
     states, stats = no_writes
     entry, _, graph_mock = await _setup(hass, [_tank()])
@@ -154,6 +156,8 @@ async def test_poll_merges_week_and_backfills(hass: HomeAssistant, no_writes) ->
     assert stats.await_count == 2
     assert coordinator.backfilled_until["940670"] == LAST["ts"]
     assert coordinator.backfill_status["940670"]["inserted"] == 1
+    assert "Test Tank: upload at" in caplog.text
+    assert "172 in the last 7 days" in caplog.text
 
     # Same upload again: no new graph fetch.
     with patch(f"{CLIENT}.async_get_tanks", return_value=[_tank()]):
@@ -176,7 +180,9 @@ async def test_poll_graph_failure_keeps_snapshot(
     await hass.config_entries.async_unload(entry.entry_id)
 
 
-async def test_backfill_disabled_and_waiting(hass: HomeAssistant, no_writes) -> None:
+async def test_backfill_disabled_and_waiting(
+    hass: HomeAssistant, no_writes, caplog
+) -> None:
     """With state backfill off only statistics are written."""
     states, stats = no_writes
     entry, _, _ = await _setup(hass, [_tank()], backfill_states=False)
@@ -191,6 +197,7 @@ async def test_backfill_disabled_and_waiting(hass: HomeAssistant, no_writes) -> 
     coordinator = hass2_entry.runtime_data.coordinator
     assert "2" not in coordinator.backfilled_until
     assert coordinator.backfill_status["2"]["waiting_for"] == ["sensor.x"]
+    assert "waiting for sensor.x" in caplog.text
     await hass.config_entries.async_unload(hass2_entry.entry_id)
 
 
