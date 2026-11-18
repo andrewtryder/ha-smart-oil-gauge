@@ -10,7 +10,7 @@ Entity IDs are examples; actual IDs depend on your Home Assistant configuration.
 | **Oil Percentage** | `sensor.oil_tank_percentage` | Percentage of total tank capacity remaining. |
 | **Daily Usage Rate** | `sensor.oil_tank_daily_usage_rate` | Rolling average daily fuel consumption (`gal/day`). |
 | **Estimated Runout Date** | `sensor.oil_tank_estimated_runout_date` | Estimated date when fuel reaches 0 gallons based on current usage. |
-| **Last Refill Amount** | `sensor.oil_tank_last_refill_amount` | Gallons added during the most recent detected refill. Attribute `in_progress` is `true` while the level is still climbing (for example while two tanks equalize). |
+| **Last Refill Amount** | `sensor.oil_tank_last_refill_amount` | Gallons added during the most recent detected refill. Attribute `equalizing` ("Refill equalization in progress") is `true` while the level is still rising after a delivery. A delivery itself takes minutes; a level that keeps climbing for hours afterwards is a second tank equalizing through its connecting line, or the oil settling. The amount keeps updating until the level levels off. |
 | **Last Refill Date** | `sensor.oil_tank_last_refill_date` | Date and time when the last refill occurred. |
 | **Max Level** | `sensor.oil_tank_max_level` | Total nominal tank capacity in gallons. |
 | **Max Fill** | `sensor.oil_tank_max_fill` | Remaining fillable tank capacity in gallons. |

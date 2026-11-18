@@ -139,7 +139,9 @@ def _get_refill_attrs(
     refill = coordinator.last_refills.get(str(tank.get("tank_id", "")).strip())
     if not refill:
         return None
-    return {"in_progress": bool(refill.get("in_progress", False))}
+    # Deliveries take minutes, so a level that keeps rising for hours after
+    # one is the oil settling or a second tank equalizing, not filling.
+    return {"equalizing": bool(refill.get("in_progress", False))}
 
 
 def _get_max_level_value(

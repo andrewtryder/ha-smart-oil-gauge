@@ -53,7 +53,7 @@ This integration fills in the gaps:
 - **On every new upload** the hourly readings for the past week are fetched and written into Home Assistant's history **at the time each reading was taken**. The built-in history graph, the entity's more-info dialog, and the History panel all show the full hourly curve. Rows recorded between uploads that held a stale value are corrected to the true reading.
 - **Long-term statistics** for the same hours are updated, so history older than the recorder's keep window (10 days by default) is also accurate.
 - **On first setup** the gauge's full hourly history is downloaded from the portal's export and added: readings within the keep window as history, older readings as long-term statistics. Press **Import history** on the tank's device page to run it again; it is safe to repeat.
-- **Refills** are detected from the hourly readings, so a slow refill (for example two tanks equalizing over many hours) is reported as one refill starting at its real time. **Last refill amount** has an `in_progress` attribute while the level is still climbing.
+- **Refills** are detected from the hourly readings and reported as one refill starting at its real time. A delivery takes minutes, but the gauged level can keep rising for hours afterwards, for example while a second tank equalizes through its connecting line. During that time **Last refill amount** keeps updating and its `equalizing` attribute ("Refill equalization in progress") is `true`; it turns `false` once the level settles.
 
 Both the history backfill and the first-time import can be turned off under **Configure**.
 

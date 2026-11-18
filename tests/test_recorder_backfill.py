@@ -259,7 +259,7 @@ async def test_integration_backfills_week_on_poll(
     )
     refill_state = hass.states.get(refill)
     assert float(refill_state.state) == pytest.approx(140.3)
-    assert refill_state.attributes["in_progress"] is True
+    assert refill_state.attributes["equalizing"] is True
 
     start = datetime.fromtimestamp(points[0]["ts"], UTC) - timedelta(minutes=1)
     end = datetime.fromtimestamp(last["ts"], UTC) + timedelta(hours=1)
