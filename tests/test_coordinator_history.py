@@ -58,6 +58,14 @@ def _tank(**overrides: Any) -> dict[str, Any]:
     return tank
 
 
+@pytest.fixture(autouse=True)
+def pinned_now():
+    """Run as if it were one hour after the sample data's last reading."""
+    now = datetime.fromtimestamp(LAST["ts"], UTC) + timedelta(hours=1)
+    with patch(f"{WRITER}.dt_util.utcnow", return_value=now):
+        yield now
+
+
 @pytest.fixture
 def no_writes():
     """Patch out recorder writes so these tests need no database."""

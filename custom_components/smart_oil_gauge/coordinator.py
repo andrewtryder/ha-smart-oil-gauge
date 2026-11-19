@@ -626,7 +626,7 @@ class SmartOilGaugeDataUpdateCoordinator(
     ) -> list[tuple[datetime, float]] | None:
         """Download CSV exports for all sensor registrations of a tank."""
         rows: list[tuple[datetime, float]] = []
-        today = dt_util.now().date()
+        today = dt_util.as_local(dt_util.utcnow()).date()
         for reg in registrations:
             if not isinstance(reg, dict) or not reg.get("registration_id"):
                 continue
