@@ -71,7 +71,7 @@
         "name": "Last checked"
       },
       "last_portal_update": {
-        "name": "Last portal update"
+        "name": "Last portal sync"
       },
       "max_level": {
         "name": "Max level"
@@ -100,7 +100,7 @@
         "name": "Last refill date"
       },
       "last_read": {
-        "name": "Last read"
+        "name": "Last gauge upload"
       }
     },
     "binary_sensor": {
