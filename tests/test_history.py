@@ -159,3 +159,26 @@ def test_hours_ago() -> None:
     """hours_ago returns a unix timestamp in the past."""
     now = datetime(2026, 1, 1, 12, tzinfo=UTC)
     assert h.hours_ago(now, 2) == datetime(2026, 1, 1, 10, tzinfo=UTC).timestamp()
+
+
+def test_slow_refill_settles_when_level_levels_off() -> None:
+    """Real 11/17 delivery: brief pauses don't end it; it settles at 7 PM 11/19."""
+    rows = h.parse_export_csv((FIXTURES / "export_refill_settle.csv").read_text())
+    series = h.localize_rows(rows, NY, 0)
+
+    def as_of(local: str) -> h.RefillEvent:
+        cutoff = datetime.fromisoformat(local).replace(tzinfo=NY).timestamp()
+        return h.detect_refills([p for p in series if p[0] <= cutoff])[-1]
+
+    # The level paused for an hour at 2 AM and noon on 11/19 while still
+    # filling; neither ends the refill.
+    assert as_of("2026-11-19T02:30").in_progress
+    assert as_of("2026-11-19T14:30").in_progress
+    # A +2 gallon blip at 6 PM doesn't keep it open once the level is flat.
+    settled = as_of("2026-11-19T19:30")
+    assert not settled.in_progress
+    final = h.detect_refills(series)[-1]
+    assert final.start == datetime(2026, 11, 17, 15, 55, 35, tzinfo=UTC)
+    assert not final.in_progress
+    # Measured to the settled level (276.69), not the 277.58 blip.
+    assert final.amount == pytest.approx(215.6)

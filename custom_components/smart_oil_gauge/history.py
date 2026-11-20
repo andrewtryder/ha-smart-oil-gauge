@@ -30,8 +30,10 @@ HOUR_S = 3600.0
 # Refill detection tuning. Hour-to-hour sensor noise is about +/-1 gallon.
 REFILL_MIN_AMOUNT = 15.0
 REFILL_START_RISE = 3.0
-REFILL_RISE_WINDOW = 3
-REFILL_RISE_EPS = 1.5
+# A refill has settled once the level has risen no more than this over the
+# last REFILL_SETTLE_READINGS readings. Single flat hours are common while
+# a second tank is still equalizing, so one flat hour is not enough.
+REFILL_SETTLE_EPS = 1.5
 REFILL_SETTLE_READINGS = 6
 REFILL_BASELINE_READINGS = 3
 
@@ -317,35 +319,39 @@ def detect_refills(
     """Detect refills, including slow ones that climb over many hours.
 
     A candidate opens when the level rises by more than ``REFILL_START_RISE``
-    over one reading. It stays open while the level keeps climbing (more than
-    ``REFILL_RISE_EPS`` over the last ``REFILL_RISE_WINDOW`` readings) and
-    closes after ``REFILL_SETTLE_READINGS`` readings without a climb.
-    Candidates that never add ``min_amount`` gallons are discarded as noise.
+    over one reading. It settles once the level has risen no more than
+    ``REFILL_SETTLE_EPS`` over the last ``REFILL_SETTLE_READINGS`` readings,
+    so brief pauses and single noisy readings don't end it early. The amount
+    is measured to the settled level (a 3-reading median), so one high
+    reading doesn't inflate it. Candidates that never add ``min_amount``
+    gallons are discarded as noise.
     """
     events: list[RefillEvent] = []
     gal = [p[1] for p in series]
     ts = [p[0] for p in series]
-    k = 1
     n = len(series)
+    k = 1
     while k < n:
         if gal[k] - gal[k - 1] <= REFILL_START_RISE:
             k += 1
             continue
         base_slice = gal[max(0, k - REFILL_BASELINE_READINGS) : k]
         baseline = sorted(base_slice)[len(base_slice) // 2]
-        peak, peak_ts = gal[k], ts[k]
-        quiet = 0
+        peak, peak_ts = _smoothed(gal, k), ts[k]
         j = k + 1
-        while j < n and quiet < REFILL_SETTLE_READINGS:
-            if gal[j] > peak:
-                peak, peak_ts = gal[j], ts[j]
-            back = gal[max(k - 1, j - REFILL_RISE_WINDOW)]
-            if gal[j] - back > REFILL_RISE_EPS:
-                quiet = 0
-            else:
-                quiet += 1
+        settled = False
+        while j < n:
+            level = _smoothed(gal, j)
+            if level > peak:
+                peak, peak_ts = level, ts[j]
+            if (
+                j - k >= REFILL_SETTLE_READINGS
+                and gal[j] - gal[j - REFILL_SETTLE_READINGS] <= REFILL_SETTLE_EPS
+            ):
+                settled = True
+                j += 1
+                break
             j += 1
-        in_progress = quiet < REFILL_SETTLE_READINGS
         if peak - baseline >= min_amount:
             events.append(
                 RefillEvent(
@@ -353,13 +359,19 @@ def detect_refills(
                     baseline=baseline,
                     peak=peak,
                     peak_ts=peak_ts,
-                    in_progress=in_progress,
+                    in_progress=not settled,
                 )
             )
             k = j
         else:
             k += 1
     return events
+
+
+def _smoothed(gal: Sequence[float], j: int) -> float:
+    """Median of the reading and its neighbours, to ignore single blips."""
+    window = sorted(gal[max(0, j - 1) : j + 2])
+    return window[len(window) // 2]
 
 
 def hours_ago(now: datetime, hours: float) -> float:
