@@ -119,9 +119,7 @@ async def test_sensors_success(hass: HomeAssistant) -> None:
         assert battery_state.attributes["icon"] == "mdi:battery"
 
         # Check Last Portal Update Sensor
-        last_checked_state = hass.states.get(
-            "sensor.main_house_tank_last_portal_update"
-        )
+        last_checked_state = hass.states.get("sensor.main_house_tank_last_portal_sync")
         assert last_checked_state is not None
         assert last_checked_state.state != "unknown"
         assert last_checked_state.attributes["device_class"] == "timestamp"

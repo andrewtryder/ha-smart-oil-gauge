@@ -15,7 +15,11 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .client import CannotConnect, InvalidAuth, SmartOilGaugeClient
 from .const import (
+    CONF_BACKFILL_STATES,
+    CONF_IMPORT_HISTORY,
     CONF_UPDATE_INTERVAL_HOURS,
+    DEFAULT_BACKFILL_STATES,
+    DEFAULT_IMPORT_HISTORY,
     DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
     USER_AGENT,
@@ -176,6 +180,18 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithReload):
                             ),
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=1, max=24)),
+                    vol.Required(
+                        CONF_BACKFILL_STATES,
+                        default=self.config_entry.options.get(
+                            CONF_BACKFILL_STATES, DEFAULT_BACKFILL_STATES
+                        ),
+                    ): bool,
+                    vol.Required(
+                        CONF_IMPORT_HISTORY,
+                        default=self.config_entry.options.get(
+                            CONF_IMPORT_HISTORY, DEFAULT_IMPORT_HISTORY
+                        ),
+                    ): bool,
                 }
             ),
         )
