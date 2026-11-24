@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .coordinator import (
     SmartOilGaugeConfigEntry,
@@ -43,6 +47,12 @@ async def async_setup_entry(
             new_entities.append(
                 SmartOilGaugeLowFuelBinarySensor(coordinator, tank_id, tank_name)
             )
+            if coordinator.active_registration_id(tank) is not None:
+                new_entities.append(
+                    SmartOilGaugeIntervalPendingBinarySensor(
+                        coordinator, tank_id, tank_name
+                    )
+                )
 
         if new_entities:
             async_add_entities(new_entities)
@@ -85,3 +95,40 @@ class SmartOilGaugeLowFuelBinarySensor(SmartOilGaugeEntity, BinarySensorEntity):
         if gal is None or nominal is None or low_level is None or nominal <= 0:
             return None
         return (gal / nominal) < low_level
+
+
+class SmartOilGaugeIntervalPendingBinarySensor(SmartOilGaugeEntity, BinarySensorEntity):
+    """On while a new upload interval waits for the gauge's next upload.
+
+    The gauge only fetches its settings when it uploads, so a change made on
+    the portal (or from Home Assistant) is not used until then.
+    """
+
+    _attr_translation_key = "upload_interval_pending"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:timer-sand"
+
+    def __init__(self, coordinator, tank_id: str, tank_name: str) -> None:
+        """Initialize."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_unique_id = f"{tank_id}_upload_interval_pending"
+
+    @property
+    def is_on(self) -> bool | None:
+        """True while the portal setting differs from the one in use."""
+        sched = self.coordinator.schedules.get(self.tank_id)
+        return sched.pending if sched else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """The interval set on the portal and the one the gauge uses now."""
+        sched = self.coordinator.schedules.get(self.tank_id)
+        if sched is None:
+            return None
+        return {
+            "portal_interval_hours": sched.configured_h,
+            "gauge_interval_hours": sched.effective_h,
+            "pending_since": dt_util.utc_from_timestamp(sched.pending_since).isoformat()
+            if sched.pending_since
+            else None,
+        }

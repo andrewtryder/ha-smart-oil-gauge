@@ -15,7 +15,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, UnitOfVolume
+from homeassistant.const import PERCENTAGE, UnitOfTime, UnitOfVolume
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -131,6 +131,58 @@ def _get_last_read_value(
     if last_read is None or last_read <= 0:
         return None
     return dt_util.utc_from_timestamp(last_read)
+
+
+def _get_next_expected_upload(
+    tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
+) -> datetime | None:
+    return coordinator.next_expected_upload(str(tank.get("tank_id", "")).strip())
+
+
+def _get_next_sync(
+    tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
+) -> datetime | None:
+    return coordinator.next_poll_at
+
+
+def _get_interval_in_use(
+    tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
+) -> float | None:
+    sched = coordinator.schedules.get(str(tank.get("tank_id", "")).strip())
+    if sched is None:
+        return None
+    hours, _ = sched.interval()
+    return round(hours, 1) if hours is not None else None
+
+
+def _get_interval_in_use_attrs(
+    tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
+) -> dict[str, Any] | None:
+    sched = coordinator.schedules.get(str(tank.get("tank_id", "")).strip())
+    if sched is None:
+        return None
+    _, source = sched.interval()
+    return {
+        "portal_interval_hours": sched.configured_h,
+        "pending": sched.pending,
+        "source": source,
+    }
+
+
+def _get_next_expected_attrs(
+    tank: dict[str, Any], coordinator: SmartOilGaugeDataUpdateCoordinator
+) -> dict[str, Any] | None:
+    tank_id = str(tank.get("tank_id", "")).strip()
+    return {
+        "interval_in_use_hours": _get_interval_in_use(tank, coordinator),
+        "possible_uploads": [
+            t.isoformat() for t in coordinator.possible_uploads(tank_id)
+        ],
+        "next_sync": coordinator.next_poll_at.isoformat()
+        if coordinator.next_poll_at
+        else None,
+        "overdue": coordinator.upload_overdue(tank_id),
+    }
 
 
 def _get_refill_attrs(
@@ -310,6 +362,32 @@ SENSOR_TYPES: tuple[SmartOilGaugeSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TIMESTAMP,
         icon="mdi:clock-check-outline",
         value_fn=_get_last_read_value,
+    ),
+    SmartOilGaugeSensorEntityDescription(
+        key="next_expected_upload",
+        translation_key="next_expected_upload",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:clock-start",
+        value_fn=_get_next_expected_upload,
+        attrs_fn=_get_next_expected_attrs,
+    ),
+    SmartOilGaugeSensorEntityDescription(
+        key="next_portal_sync",
+        translation_key="next_portal_sync",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:cloud-clock-outline",
+        value_fn=_get_next_sync,
+    ),
+    SmartOilGaugeSensorEntityDescription(
+        key="upload_interval_in_use",
+        translation_key="upload_interval_in_use",
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:timer-outline",
+        value_fn=_get_interval_in_use,
+        attrs_fn=_get_interval_in_use_attrs,
     ),
     SmartOilGaugeSensorEntityDescription(
         key="max_level",

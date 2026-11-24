@@ -41,6 +41,10 @@ class Resp:
         """Return text."""
         return self._text
 
+    async def read(self):
+        """Return bytes."""
+        return self._text.encode()
+
     async def json(self, **kwargs):
         """Return JSON."""
         if self._json_error:

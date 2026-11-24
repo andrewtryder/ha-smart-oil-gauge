@@ -12,11 +12,15 @@ from homeassistant.helpers.storage import Store
 
 from .client import SmartOilGaugeClient
 from .const import (
+    CONF_ALLOW_INTERVAL_CHANGE,
     CONF_BACKFILL_STATES,
     CONF_IMPORT_HISTORY,
+    CONF_SCHEDULE_MODE,
     CONF_UPDATE_INTERVAL_HOURS,
+    DEFAULT_ALLOW_INTERVAL_CHANGE,
     DEFAULT_BACKFILL_STATES,
     DEFAULT_IMPORT_HISTORY,
+    DEFAULT_SCHEDULE_MODE,
     DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
     USER_AGENT,
@@ -34,6 +38,7 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
+    Platform.SELECT,
 ]
 
 
@@ -60,6 +65,10 @@ async def async_setup_entry(
             CONF_BACKFILL_STATES, DEFAULT_BACKFILL_STATES
         ),
         import_history=entry.options.get(CONF_IMPORT_HISTORY, DEFAULT_IMPORT_HISTORY),
+        schedule_mode=entry.options.get(CONF_SCHEDULE_MODE, DEFAULT_SCHEDULE_MODE),
+        allow_interval_change=entry.options.get(
+            CONF_ALLOW_INTERVAL_CHANGE, DEFAULT_ALLOW_INTERVAL_CHANGE
+        ),
     )
 
     setup_complete = False

@@ -23,6 +23,7 @@ dev = [
 package = false
 
 [tool.pytest.ini_options]
+markers = ["real_sensor_config: use the real client sensor-config call"]
 testpaths = [
     "tests",
 ]

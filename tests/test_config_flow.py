@@ -274,6 +274,8 @@ async def test_options_flow(hass: HomeAssistant) -> None:
         CONF_UPDATE_INTERVAL_HOURS: 12,
         "backfill_states": False,
         "import_history": False,
+        "schedule_mode": "fixed",
+        "allow_interval_change": False,
     }
 
 

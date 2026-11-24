@@ -38,7 +38,7 @@ For manual installation, download the latest release and copy `custom_components
 ## First-time setup
 
 1. Go to **Settings → Devices & services → Add integration** and select **Smart Oil Gauge**.
-2. Enter your portal email and password and choose a polling interval from 1 to 24 hours. Six hours is the default. Because missed hourly readings are filled in at their real times, a longer interval only delays when new readings appear; set it to 1 hour if you want uploads to show up sooner.
+2. Enter your portal email and password and choose a polling interval from 1 to 24 hours. (An experimental option can instead sync on the gauge's own upload schedule; see [Sync timing](#sync-timing).)
 3. Submit the form. Each discovered tank appears as a device with its available sensors.
 
 You can change the interval later in the integration's **Configure** options.
@@ -58,6 +58,41 @@ This integration fills in the gaps. **Last gauge upload** and refill detection a
 Both experimental options are under **Configure** and are off unless you turn them on.
 
 > **Experimental:** Home Assistant has no official API for writing past states, so the history backfill writes to the recorder database directly, using the recorder's own database models inside its own thread. It is written to work with SQLite, MariaDB/MySQL, and PostgreSQL, but it relies on Home Assistant internals that can change in any release. If the recorder is migrating or its database layout is not what this version expects, the backfill is skipped with a warning and statistics are still updated. As with any database change, keep regular backups.
+
+## Sync timing
+
+By default the integration polls the portal every N hours, as set during setup. Polling doesn't use the gauge's battery, but the gauge only uploads on its own interval (1–24 hours, set on the portal under **Sensor Config**), so a fixed poll can catch an upload up to N hours late.
+
+**Follow the gauge's upload schedule** (experimental, off by default, under **Configure**) reads the gauge's upload interval from the portal and syncs **a few minutes after each expected upload** instead:
+
+- **Next sync** = the gauge's last upload + its upload interval + 5 minutes.
+- **Late upload** (weak signal, low battery): tries again 15, 45 and 105 minutes after it was due. If another upload is still possible later (for example while an interval change is pending), it then waits for that; otherwise it keeps trying hourly.
+- **No syncs in between:** battery and level only change when the gauge uploads. With a 12-hour interval that's two syncs a day, plus retries only when an upload is late. (A 25-hour limit is kept as a safety net.)
+- **One schedule for all tanks:** a single request updates every tank, so it syncs when the earliest one is due.
+
+### How the gauge picks up a new upload interval
+
+The gauge **uploads** on its interval, but it **fetches its settings** from the portal far less often, roughly once a day and sometimes less. The portal itself notes that a change "can take up to a few days to take effect." Watching a real gauge:
+
+- **12 h → 1 h:** the gauge made two more 12-hour uploads (about 20 hours) before switching to hourly.
+- **1 h → 2 h:** the gauge kept uploading every hour through the evening; the change hadn't been picked up hours later.
+- **→ 12 h:** set in the morning, picked up within a day.
+
+So a change does not take effect at the next upload, and its timing can't be predicted. The integration doesn't guess:
+
+- **The interval in use is learned from the gauge's uploads.** A change on the portal is shown as *pending* (with the time it was made) until an upload gap matches the new setting. A double-length gap is treated as a missed upload, not a new interval; two consistent gaps that match neither setting are trusted.
+- **While a change is pending, both the old and the new interval are possible** for each upload, and the sync follows whichever slot comes first.
+- **Next gauge upload shows the earliest upload still possible.** An expected upload stays shown for the 5 minutes until the sync that checks for it (so it may read "2 minutes ago" while due); after that it moves to the next possible upload, or shows *unknown* with `overdue: true` if none is left.
+
+### Entities
+
+Each tank gets:
+
+- **Sync now** button: checks the portal immediately (in either mode).
+- **Upload interval in use** sensor: the interval the gauge is actually using, with the portal's setting and whether a change is pending.
+- **Upload interval change pending**: on while the portal setting differs from what the gauge is doing, with the time of the change.
+- **Next gauge upload** and **Next portal sync** sensors.
+- **Upload interval** control, only with **Allow changing the gauge's upload interval** (experimental, off by default) turned on: changes the gauge's upload interval on the portal. The portal saves its whole Sensor Config form at once, so the integration resubmits it with every other field unchanged and reads it back to confirm only the interval changed. The gauge applies it when it next fetches its settings (see above).
 
 ## What you'll see in Home Assistant
 

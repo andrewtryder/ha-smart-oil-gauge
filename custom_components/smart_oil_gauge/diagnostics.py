@@ -61,4 +61,41 @@ async def async_get_config_entry_diagnostics(
             }
             for idx, tank_id in enumerate(coordinator.data or {}, start=1)
         },
+        "schedule": {
+            "mode": coordinator.schedule_mode,
+            "next_sync": coordinator.next_poll_at.isoformat()
+            if coordinator.next_poll_at
+            else None,
+            **{
+                f"tank_{idx}": _schedule_info(coordinator, tank_id)
+                for idx, tank_id in enumerate(coordinator.data or {}, start=1)
+            },
+        },
+    }
+
+
+def _schedule_info(coordinator, tank_id: str) -> dict[str, Any] | None:
+    """Upload schedule details for one tank."""
+    sched = coordinator.schedules.get(tank_id)
+    if sched is None:
+        return None
+    hours, source = sched.interval()
+    expected = coordinator.next_expected_upload(tank_id)
+    return {
+        "portal_interval_hours": sched.configured_h,
+        "gauge_interval_hours": sched.effective_h,
+        "pending": sched.pending,
+        "pending_since": sched.pending_since,
+        "interval_confirmed_by_uploads": sched.confirmed,
+        "possible_uploads": [
+            t.isoformat() for t in coordinator.possible_uploads(tank_id)
+        ],
+        "overdue": coordinator.upload_overdue(tank_id),
+        "interval_used_hours": hours,
+        "interval_source": source,
+        "measured_interval_hours": sched.measured_h(),
+        "recent_uploads": len(sched.upload_times),
+        "next_expected_upload": expected.isoformat() if expected else None,
+        "config_error": sched.config_error,
+        "number_of_tanks": sched.num_tanks,
     }
