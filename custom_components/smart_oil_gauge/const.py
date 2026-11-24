@@ -9,3 +9,10 @@ USER_AGENT = (
 )
 CONF_UPDATE_INTERVAL_HOURS = "update_interval_hours"
 DEFAULT_UPDATE_INTERVAL_HOURS = 6
+# Experimental, opt-in history features. Both write to the Home Assistant
+# recorder, and the state backfill uses recorder internals, so they are off
+# unless the user turns them on in the options.
+CONF_BACKFILL_STATES = "backfill_states"
+DEFAULT_BACKFILL_STATES = False
+CONF_IMPORT_HISTORY = "import_history"
+DEFAULT_IMPORT_HISTORY = False

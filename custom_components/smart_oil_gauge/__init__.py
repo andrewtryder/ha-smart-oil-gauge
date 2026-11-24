@@ -12,7 +12,11 @@ from homeassistant.helpers.storage import Store
 
 from .client import SmartOilGaugeClient
 from .const import (
+    CONF_BACKFILL_STATES,
+    CONF_IMPORT_HISTORY,
     CONF_UPDATE_INTERVAL_HOURS,
+    DEFAULT_BACKFILL_STATES,
+    DEFAULT_IMPORT_HISTORY,
     DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
     USER_AGENT,
@@ -29,6 +33,7 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
 ]
 
 
@@ -47,7 +52,14 @@ async def async_setup_entry(
     )
 
     coordinator = SmartOilGaugeDataUpdateCoordinator(
-        hass, client, update_interval_hours, entry.entry_id
+        hass,
+        client,
+        update_interval_hours,
+        entry.entry_id,
+        backfill_states=entry.options.get(
+            CONF_BACKFILL_STATES, DEFAULT_BACKFILL_STATES
+        ),
+        import_history=entry.options.get(CONF_IMPORT_HISTORY, DEFAULT_IMPORT_HISTORY),
     )
 
     setup_complete = False
@@ -57,6 +69,11 @@ async def async_setup_entry(
         entry.runtime_data = SmartOilGaugeData(client=client, coordinator=coordinator)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         setup_complete = True
+        entry.async_create_background_task(
+            hass,
+            coordinator.async_start_initial_import(),
+            "smart_oil_gauge initial history import",
+        )
     finally:
         if not setup_complete:
             await client.async_close()

@@ -15,6 +15,7 @@ See how much heating oil remains, track your tanks, and estimate when you may ne
 
 - See remaining gallons and tank percentage for each linked tank.
 - Track estimated daily use, runout date, recent refills, and battery status.
+- Optionally (experimental, off by default) see every hourly reading in Home Assistant's history at the time it was taken, even though the gauge uploads them in batches (see [Hourly history](#hourly-history)).
 - Build low-fuel alerts and dashboards using Home Assistant entities.
 - Get reauthentication prompts and repair notices when portal access needs attention.
 
@@ -37,10 +38,26 @@ For manual installation, download the latest release and copy `custom_components
 ## First-time setup
 
 1. Go to **Settings → Devices & services → Add integration** and select **Smart Oil Gauge**.
-2. Enter your portal email and password and choose a polling interval from 1 to 24 hours. Six hours is recommended.
+2. Enter your portal email and password and choose a polling interval from 1 to 24 hours. Six hours is the default. Because missed hourly readings are filled in at their real times, a longer interval only delays when new readings appear; set it to 1 hour if you want uploads to show up sooner.
 3. Submit the form. Each discovered tank appears as a device with its available sensors.
 
 You can change the interval later in the integration's **Configure** options.
+
+## Hourly history
+
+The gauge takes a reading every hour but, to save battery, uploads them in batches (every 1–24 hours, set in the gauge's own configuration). Without help, Home Assistant only sees the newest reading at each upload, stamped with the time Home Assistant polled.
+
+This integration fills in the gaps. **Last gauge upload** and refill detection are always on. The history backfill and the history import are **experimental and opt-in**: both are off by default and must be turned on under **Configure**. With them off, the integration never writes past readings to the recorder, and upgrading changes nothing in your existing history.
+
+- **Last gauge upload** shows when the gauge actually uploaded, not when Home Assistant synced.
+- **On every new upload** (when *Backfill sensor history* is on) the hourly readings for the past week are fetched and written into Home Assistant's history **at the time each reading was taken**. The built-in history graph, the entity's more-info dialog, and the History panel all show the full hourly curve. Rows recorded between uploads that held a stale value are corrected to the true reading.
+- **Long-term statistics** for the same hours are updated (also only with backfill on), so history older than the recorder's keep window (10 days by default) is also accurate.
+- **History import** (when *Import full portal history* is on) downloads the gauge's full hourly history from the portal's export once and adds it to long-term statistics, plus state history within the keep window if backfill is also on. An **Import history** button appears on the tank's device page to run it again; it is safe to repeat, and a second press while an import is running is ignored.
+- **Refills** are detected from the hourly readings and reported as one refill starting at its real time. A delivery takes minutes, but the gauged level can keep rising for hours afterwards, for example while a second tank equalizes through its connecting line. During that time **Last refill amount** keeps updating and its `equalizing` attribute ("Refill equalization in progress") is `true`; it turns `false` once the level settles.
+
+Both experimental options are under **Configure** and are off unless you turn them on.
+
+> **Experimental:** Home Assistant has no official API for writing past states, so the history backfill writes to the recorder database directly, using the recorder's own database models inside its own thread. It is written to work with SQLite, MariaDB/MySQL, and PostgreSQL, but it relies on Home Assistant internals that can change in any release. If the recorder is migrating or its database layout is not what this version expects, the backfill is skipped with a warning and statistics are still updated. As with any database change, keep regular backups.
 
 ## What you'll see in Home Assistant
 
@@ -48,7 +65,7 @@ Depending on the data available, each tank can show level, percentage, daily usa
 
 ## Common problems and troubleshooting
 
-- **No tank or stale reading:** check that the tank is linked and updated in the vendor portal. The physical gauge typically reports only one to three times per day; faster polling does not make its reading fresher and can cause rate limits or account blocks.
+- **No tank or stale reading:** check that the tank is linked and updated in the vendor portal. The physical gauge uploads only at its configured interval; polling more often than hourly does not make readings fresher. Missed hours are filled in automatically at the next upload.
 - **Authentication failed:** update the credentials when Home Assistant prompts for reauthentication.
 - **Portal data cannot be read:** check Home Assistant repairs and diagnostics. Review diagnostics before sharing them and never post credentials.
 
@@ -56,7 +73,7 @@ Depending on the data available, each tank can show level, percentage, daily usa
 
 The integration depends on the vendor's web portal and its available data. Oil level may be a physical reading or an estimate. Runout and daily-use values are estimates, not a guarantee of remaining fuel. A portal change or outage can interrupt updates.
 
-Removing the integration through **Settings → Devices & services** also removes its locally stored refill history and related repair notifications; it does not change the vendor portal account.
+Removing the integration through **Settings → Devices & services** also removes its locally stored refill and backfill state and related repair notifications; history already written to the recorder stays until the recorder purges it. It does not change the vendor portal account.
 
 ## More documentation
 
