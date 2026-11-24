@@ -18,14 +18,13 @@ async def async_setup_entry(
     entry: SmartOilGaugeConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the Import history button for each tank.
+    """Set up the Sync now and Import history buttons for each tank.
 
-    The button only exists when the experimental history import is turned on
-    in the options, so a default install never writes imported history.
+    The Import history button only exists when the experimental history import
+    is turned on in the options, so a default install never writes imported
+    history.
     """
     coordinator = entry.runtime_data.coordinator
-    if not coordinator.import_history:
-        return
     known_tank_ids: set[str] = set()
 
     @callback
@@ -37,11 +36,12 @@ async def async_setup_entry(
             if tank_id in known_tank_ids:
                 continue
             known_tank_ids.add(tank_id)
-            new_entities.append(
-                SmartOilGaugeImportHistoryButton(
-                    coordinator, tank_id, tank.get("tank_name", "Oil Tank")
+            name = tank.get("tank_name", "Oil Tank")
+            if coordinator.import_history:
+                new_entities.append(
+                    SmartOilGaugeImportHistoryButton(coordinator, tank_id, name)
                 )
-            )
+            new_entities.append(SmartOilGaugeSyncNowButton(coordinator, tank_id, name))
         if new_entities:
             async_add_entities(new_entities)
 
@@ -71,3 +71,19 @@ class SmartOilGaugeImportHistoryButton(SmartOilGaugeEntity, ButtonEntity):
             coordinator.async_import_history(self.tank_id),
             f"smart_oil_gauge import history {self.tank_id}",
         )
+
+
+class SmartOilGaugeSyncNowButton(SmartOilGaugeEntity, ButtonEntity):
+    """Check the portal for new readings right away."""
+
+    _attr_translation_key = "sync_now"
+    _attr_icon = "mdi:cloud-sync-outline"
+
+    def __init__(self, coordinator, tank_id: str, tank_name: str) -> None:
+        """Initialize the button."""
+        super().__init__(coordinator, tank_id, tank_name)
+        self._attr_unique_id = f"{tank_id}_sync_now"
+
+    async def async_press(self) -> None:
+        """Refresh now; new uploads are backfilled as usual."""
+        await self.coordinator.async_refresh()

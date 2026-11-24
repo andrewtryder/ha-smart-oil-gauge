@@ -2,6 +2,7 @@
 
 import json
 import logging
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -15,6 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 LOGIN_URL = "https://app.smartoilgauge.com/login.php"
 AJAX_URL = "https://app.smartoilgauge.com/ajax/main_ajax.php"
 EXPORT_URL = "https://app.smartoilgauge.com/export_data.php"
+SENSOR_CONFIG_URL = "https://app.smartoilgauge.com/sensor_configuration.php"
+NONCE_FIELD = "ccf_nonce"
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
 HISTORY_TIMEOUT = aiohttp.ClientTimeout(total=90)
 
@@ -327,3 +330,172 @@ class SmartOilGaugeClient:
                 )
             raise SmartOilGaugeException("Export did not return CSV data")
         return text
+
+    async def async_get_sensor_config(
+        self, registration_id: str, retry_login: bool = True
+    ) -> SensorConfig:
+        """Read the portal's Sensor Config page for one sensor registration.
+
+        This only loads the page; nothing is submitted.
+        """
+        try:
+            async with self._session.get(
+                SENSOR_CONFIG_URL,
+                params={"registration_id": registration_id},
+                headers=self._headers,
+                timeout=REQUEST_TIMEOUT,
+            ) as r:
+                if r.status in (401, 403) and retry_login:
+                    await self.async_login()
+                    return await self.async_get_sensor_config(
+                        registration_id, retry_login=False
+                    )
+                self._check_http_status(r.status, r.headers.get("Retry-After"))
+                html = await r.text()
+        except TimeoutError as ex:
+            raise CannotConnect("Timeout reading sensor configuration") from ex
+        except aiohttp.ClientError as ex:
+            raise CannotConnect from ex
+
+        config = parse_sensor_config(html)
+        if config is None:
+            if retry_login:
+                _LOGGER.debug("Sensor config page not returned; logging in again")
+                await self.async_login()
+                return await self.async_get_sensor_config(
+                    registration_id, retry_login=False
+                )
+            raise SmartOilGaugeException("Sensor configuration form not found")
+        return config
+
+    async def async_set_upload_interval(
+        self, registration_id: str, hours: int
+    ) -> SensorConfig:
+        """Change only the gauge's upload interval on the portal.
+
+        The portal saves the whole sensor form at once, so the current form is
+        read first and submitted unchanged except for the interval. The page
+        is then read back to confirm that only the interval changed.
+        """
+        if not 1 <= hours <= 24:
+            raise ValueError("Upload interval must be 1-24 hours")
+        before = await self.async_get_sensor_config(registration_id)
+        data = [
+            (name, str(hours) if name == "upload_interval" else value)
+            for name, value in before.fields
+        ]
+        if before.submit is not None:
+            data.append(before.submit)
+        try:
+            async with self._session.post(
+                SENSOR_CONFIG_URL,
+                params={"registration_id": registration_id},
+                data=data,
+                headers=self._headers,
+                timeout=REQUEST_TIMEOUT,
+            ) as r:
+                self._check_http_status(r.status, r.headers.get("Retry-After"))
+                await r.read()
+        except TimeoutError as ex:
+            raise CannotConnect("Timeout saving sensor configuration") from ex
+        except aiohttp.ClientError as ex:
+            raise CannotConnect from ex
+
+        after = await self.async_get_sensor_config(registration_id)
+        changed = before.compare(after, ignore={"upload_interval", NONCE_FIELD})
+        if changed:
+            raise SmartOilGaugeException(
+                f"Sensor configuration fields changed unexpectedly: {changed}"
+            )
+        if after.upload_interval != hours:
+            raise SmartOilGaugeException(
+                f"Upload interval is {after.upload_interval} after saving {hours}"
+            )
+        _LOGGER.info(
+            "Upload interval for sensor registration %s changed from %s to %s hours",
+            registration_id,
+            before.upload_interval,
+            hours,
+        )
+        return after
+
+
+@dataclass(slots=True)
+class SensorConfig:
+    """The Sensor Config form as the portal shows it."""
+
+    fields: list[tuple[str, str]]
+    submit: tuple[str, str] | None
+    upload_interval: int | None
+    num_tanks: int | None
+
+    def values(self) -> dict[str, list[str]]:
+        """Field values by name (radio groups and repeats keep all values)."""
+        result: dict[str, list[str]] = {}
+        for name, value in self.fields:
+            result.setdefault(name, []).append(value)
+        return result
+
+    def compare(self, other: SensorConfig, ignore: set[str]) -> list[str]:
+        """Names of fields whose values differ, apart from ``ignore``."""
+        mine, theirs = self.values(), other.values()
+        names = (set(mine) | set(theirs)) - ignore
+        return sorted(n for n in names if mine.get(n) != theirs.get(n))
+
+
+def parse_sensor_config(html: str) -> SensorConfig | None:
+    """Parse the Sensor Config form like a browser would submit it."""
+    soup = BeautifulSoup(html, "html.parser")
+    select = soup.find("select", attrs={"name": "upload_interval"})
+    if select is None:
+        return None
+    form = select.find_parent("form")
+    if form is None:
+        return None
+
+    fields: list[tuple[str, str]] = []
+    submit: tuple[str, str] | None = None
+    for element in form.find_all(["input", "select", "textarea"]):
+        name = element.get("name")
+        if not name or element.has_attr("disabled"):
+            continue
+        kind = (element.get("type") or "").lower()
+        if element.name == "input" and kind == "submit":
+            submit = submit or (name, element.get("value", ""))
+            continue
+        value = _successful_value(element, kind)
+        if value is not None:
+            fields.append((name, value))
+
+    values = dict(fields)
+    return SensorConfig(
+        fields=fields,
+        submit=submit,
+        upload_interval=_int_or_none(values.get("upload_interval")),
+        num_tanks=_int_or_none(values.get("num_tanks")),
+    )
+
+
+def _successful_value(element: Any, kind: str) -> str | None:
+    """The value a browser would submit for a form control, or None."""
+    if element.name == "select":
+        options = element.find_all("option")
+        chosen = next((o for o in options if o.has_attr("selected")), None)
+        chosen = chosen or (options[0] if options else None)
+        if chosen is None:
+            return None
+        return chosen.get("value", chosen.get_text(strip=True))
+    if element.name == "textarea":
+        return element.get_text()
+    if kind in ("button", "image", "reset", "file"):
+        return None
+    if kind in ("checkbox", "radio"):
+        return element.get("value", "on") if element.has_attr("checked") else None
+    return element.get("value", "")
+
+
+def _int_or_none(value: str | None) -> int | None:
+    try:
+        return int(str(value).strip())
+    except TypeError, ValueError:
+        return None

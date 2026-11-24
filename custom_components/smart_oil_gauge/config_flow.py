@@ -12,16 +12,23 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 
 from .client import CannotConnect, InvalidAuth, SmartOilGaugeClient
 from .const import (
+    CONF_ALLOW_INTERVAL_CHANGE,
     CONF_BACKFILL_STATES,
     CONF_IMPORT_HISTORY,
+    CONF_SCHEDULE_MODE,
     CONF_UPDATE_INTERVAL_HOURS,
+    DEFAULT_ALLOW_INTERVAL_CHANGE,
     DEFAULT_BACKFILL_STATES,
     DEFAULT_IMPORT_HISTORY,
+    DEFAULT_SCHEDULE_MODE,
     DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
+    SCHEDULE_FIXED,
+    SCHEDULE_GAUGE,
     USER_AGENT,
 )
 
@@ -171,6 +178,17 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithReload):
             data_schema=vol.Schema(
                 {
                     vol.Required(
+                        CONF_SCHEDULE_MODE,
+                        default=self.config_entry.options.get(
+                            CONF_SCHEDULE_MODE, DEFAULT_SCHEDULE_MODE
+                        ),
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[SCHEDULE_GAUGE, SCHEDULE_FIXED],
+                            translation_key=CONF_SCHEDULE_MODE,
+                        )
+                    ),
+                    vol.Required(
                         CONF_UPDATE_INTERVAL_HOURS,
                         default=self.config_entry.options.get(
                             CONF_UPDATE_INTERVAL_HOURS,
@@ -190,6 +208,12 @@ class OptionsFlowHandler(config_entries.OptionsFlowWithReload):
                         CONF_IMPORT_HISTORY,
                         default=self.config_entry.options.get(
                             CONF_IMPORT_HISTORY, DEFAULT_IMPORT_HISTORY
+                        ),
+                    ): bool,
+                    vol.Required(
+                        CONF_ALLOW_INTERVAL_CHANGE,
+                        default=self.config_entry.options.get(
+                            CONF_ALLOW_INTERVAL_CHANGE, DEFAULT_ALLOW_INTERVAL_CHANGE
                         ),
                     ): bool,
                 }

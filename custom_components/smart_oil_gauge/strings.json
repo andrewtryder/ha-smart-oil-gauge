@@ -39,16 +39,20 @@
     "step": {
       "init": {
         "title": "Smart Oil Gauge Options",
-        "description": "Configure polling for Smart Oil Gauge. The history options are experimental and off by default.",
+        "description": "Configure polling for Smart Oil Gauge. The history and gauge-schedule options are experimental and off by default.",
         "data": {
           "update_interval_hours": "Polling Interval (Hours)",
           "backfill_states": "Backfill sensor history (experimental)",
-          "import_history": "Import full portal history (experimental)"
+          "import_history": "Import full portal history (experimental)",
+          "schedule_mode": "When to sync with the portal (experimental)",
+          "allow_interval_change": "Allow changing the gauge's upload interval (experimental)"
         },
         "data_description": {
           "update_interval_hours": "How often to check the portal for a new upload (1-24 hours). Checking the portal does not use the gauge's battery. Missed hourly readings are filled in at their real times, so a longer interval only delays when new readings appear.",
           "backfill_states": "Off by default. When on, the hourly readings the gauge uploads in batches are written into Home Assistant's state history and long-term statistics at their real times. This writes to the recorder database directly using Home Assistant internals, not a supported API; keep backups.",
-          "import_history": "Off by default. When on, the gauge's full hourly history is downloaded from the portal once and added to long-term statistics (and to state history if backfill is also on), and an Import history button is added to re-run it."
+          "import_history": "Off by default. When on, the gauge's full hourly history is downloaded from the portal once and added to long-term statistics (and to state history if backfill is also on), and an Import history button is added to re-run it.",
+          "schedule_mode": "Fixed interval (default): sync every N hours as set above. Follow the gauge's upload schedule: read the gauge's upload interval from the portal and sync a few minutes after each expected upload, with retries if one is late.",
+          "allow_interval_change": "Off by default. When on, an Upload interval control lets you change the gauge's upload interval on the portal from Home Assistant. The portal's Sensor Config form is resubmitted with only the interval changed and read back to verify. The gauge applies a new interval only when it next fetches its settings, which can take a day or more."
         }
       }
     }
@@ -101,16 +105,86 @@
       },
       "last_read": {
         "name": "Last gauge upload"
+      },
+      "next_expected_upload": {
+        "name": "Next gauge upload",
+        "state_attributes": {
+          "possible_uploads": {
+            "name": "Possible upload times"
+          },
+          "overdue": {
+            "name": "Overdue"
+          },
+          "next_sync": {
+            "name": "Next portal sync"
+          },
+          "interval_in_use_hours": {
+            "name": "Interval in use"
+          }
+        }
+      },
+      "upload_interval_in_use": {
+        "name": "Upload interval in use",
+        "state_attributes": {
+          "portal_interval_hours": {
+            "name": "Interval set on portal"
+          },
+          "pending": {
+            "name": "Change pending until next upload"
+          },
+          "source": {
+            "name": "Source"
+          }
+        }
+      },
+      "next_portal_sync": {
+        "name": "Next portal sync"
       }
     },
     "binary_sensor": {
       "low_fuel_alert": {
         "name": "Low fuel alert"
+      },
+      "upload_interval_pending": {
+        "name": "Upload interval change pending",
+        "state_attributes": {
+          "portal_interval_hours": {
+            "name": "Interval set on portal"
+          },
+          "gauge_interval_hours": {
+            "name": "Interval in use by gauge"
+          },
+          "pending_since": {
+            "name": "Changed on portal at"
+          }
+        }
       }
     },
     "button": {
       "import_history": {
         "name": "Import history"
+      },
+      "sync_now": {
+        "name": "Sync now"
+      }
+    },
+    "select": {
+      "upload_interval": {
+        "name": "Upload interval",
+        "state_attributes": {
+          "effective_interval_hours": {
+            "name": "Interval in use by the gauge"
+          },
+          "pending": {
+            "name": "Change pending until next upload"
+          },
+          "interval_source": {
+            "name": "Interval source"
+          },
+          "number_of_tanks": {
+            "name": "Number of tanks"
+          }
+        }
       }
     }
   },
@@ -118,6 +192,19 @@
     "api_breakage": {
       "title": "Smart Oil Gauge Portal Structure Changed",
       "description": "Home Assistant cannot parse data from the Smart Oil Gauge portal. The vendor web portal structure may have changed. Check for integration updates."
+    }
+  },
+  "selector": {
+    "schedule_mode": {
+      "options": {
+        "fixed": "Fixed interval",
+        "gauge": "Follow the gauge's upload schedule"
+      }
+    }
+  },
+  "exceptions": {
+    "set_interval_failed": {
+      "message": "Could not change the upload interval: {error}"
     }
   }
 }
