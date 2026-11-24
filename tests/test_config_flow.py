@@ -272,8 +272,8 @@ async def test_options_flow(hass: HomeAssistant) -> None:
     assert result2["type"] is FlowResultType.CREATE_ENTRY
     assert result2["data"] == {
         CONF_UPDATE_INTERVAL_HOURS: 12,
-        "backfill_states": True,
-        "import_history": True,
+        "backfill_states": False,
+        "import_history": False,
     }
 
 

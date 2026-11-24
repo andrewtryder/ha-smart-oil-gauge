@@ -18,8 +18,14 @@ async def async_setup_entry(
     entry: SmartOilGaugeConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the Import history button for each tank."""
+    """Set up the Import history button for each tank.
+
+    The button only exists when the experimental history import is turned on
+    in the options, so a default install never writes imported history.
+    """
     coordinator = entry.runtime_data.coordinator
+    if not coordinator.import_history:
+        return
     known_tank_ids: set[str] = set()
 
     @callback
@@ -56,8 +62,10 @@ class SmartOilGaugeImportHistoryButton(SmartOilGaugeEntity, ButtonEntity):
         self._attr_unique_id = f"{tank_id}_import_history"
 
     async def async_press(self) -> None:
-        """Start the import in the background."""
+        """Start the import in the background, unless one is already running."""
         coordinator = self.coordinator
+        if coordinator.import_running(self.tank_id):
+            return
         coordinator.config_entry.async_create_background_task(
             self.hass,
             coordinator.async_import_history(self.tank_id),

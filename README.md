@@ -15,7 +15,7 @@ See how much heating oil remains, track your tanks, and estimate when you may ne
 
 - See remaining gallons and tank percentage for each linked tank.
 - Track estimated daily use, runout date, recent refills, and battery status.
-- See every hourly reading in Home Assistant's history at the time it was taken, even though the gauge uploads them in batches (see [Hourly history](#hourly-history)).
+- Optionally (experimental, off by default) see every hourly reading in Home Assistant's history at the time it was taken, even though the gauge uploads them in batches (see [Hourly history](#hourly-history)).
 - Build low-fuel alerts and dashboards using Home Assistant entities.
 - Get reauthentication prompts and repair notices when portal access needs attention.
 
@@ -47,17 +47,17 @@ You can change the interval later in the integration's **Configure** options.
 
 The gauge takes a reading every hour but, to save battery, uploads them in batches (every 1–24 hours, set in the gauge's own configuration). Without help, Home Assistant only sees the newest reading at each upload, stamped with the time Home Assistant polled.
 
-This integration fills in the gaps:
+This integration fills in the gaps. **Last gauge upload** and refill detection are always on. The history backfill and the history import are **experimental and opt-in**: both are off by default and must be turned on under **Configure**. With them off, the integration never writes past readings to the recorder, and upgrading changes nothing in your existing history.
 
 - **Last gauge upload** shows when the gauge actually uploaded, not when Home Assistant synced.
-- **On every new upload** the hourly readings for the past week are fetched and written into Home Assistant's history **at the time each reading was taken**. The built-in history graph, the entity's more-info dialog, and the History panel all show the full hourly curve. Rows recorded between uploads that held a stale value are corrected to the true reading.
-- **Long-term statistics** for the same hours are updated, so history older than the recorder's keep window (10 days by default) is also accurate.
-- **On first setup** the gauge's full hourly history is downloaded from the portal's export and added: readings within the keep window as history, older readings as long-term statistics. Press **Import history** on the tank's device page to run it again; it is safe to repeat.
+- **On every new upload** (when *Backfill sensor history* is on) the hourly readings for the past week are fetched and written into Home Assistant's history **at the time each reading was taken**. The built-in history graph, the entity's more-info dialog, and the History panel all show the full hourly curve. Rows recorded between uploads that held a stale value are corrected to the true reading.
+- **Long-term statistics** for the same hours are updated (also only with backfill on), so history older than the recorder's keep window (10 days by default) is also accurate.
+- **History import** (when *Import full portal history* is on) downloads the gauge's full hourly history from the portal's export once and adds it to long-term statistics, plus state history within the keep window if backfill is also on. An **Import history** button appears on the tank's device page to run it again; it is safe to repeat, and a second press while an import is running is ignored.
 - **Refills** are detected from the hourly readings and reported as one refill starting at its real time. A delivery takes minutes, but the gauged level can keep rising for hours afterwards, for example while a second tank equalizes through its connecting line. During that time **Last refill amount** keeps updating and its `equalizing` attribute ("Refill equalization in progress") is `true`; it turns `false` once the level settles.
 
-Both the history backfill and the first-time import can be turned off under **Configure**.
+Both experimental options are under **Configure** and are off unless you turn them on.
 
-> **Note:** Home Assistant has no official API for writing past states, so the history backfill writes to the recorder database directly, using the recorder's own database models inside its own thread. It works with SQLite, MariaDB/MySQL, and PostgreSQL. If the recorder is migrating or its database layout is not what this version expects, the backfill is skipped with a warning and statistics are still updated. As with any database change, keep regular backups.
+> **Experimental:** Home Assistant has no official API for writing past states, so the history backfill writes to the recorder database directly, using the recorder's own database models inside its own thread. It is written to work with SQLite, MariaDB/MySQL, and PostgreSQL, but it relies on Home Assistant internals that can change in any release. If the recorder is migrating or its database layout is not what this version expects, the backfill is skipped with a warning and statistics are still updated. As with any database change, keep regular backups.
 
 ## What you'll see in Home Assistant
 

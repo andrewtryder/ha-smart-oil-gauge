@@ -97,8 +97,8 @@ class SmartOilGaugeDataUpdateCoordinator(
         update_interval_hours: int,
         entry_id: str = "default",
         *,
-        backfill_states: bool = True,
-        import_history: bool = True,
+        backfill_states: bool = False,
+        import_history: bool = False,
     ) -> None:
         """Initialize."""
         self.client = client
@@ -111,6 +111,7 @@ class SmartOilGaugeDataUpdateCoordinator(
         self.history_imported: dict[str, bool] = {}
         self.backfill_status: dict[str, Any] = {}
         self._backfill_lock = asyncio.Lock()
+        self._imports_running: set[str] = set()
         self.issue_id = f"api_breakage_{entry_id}"
         self.last_successful_update: datetime | None = None
         self._previous_levels: dict[str, dict[str, float]] = {}
@@ -325,7 +326,11 @@ class SmartOilGaugeDataUpdateCoordinator(
             # No new upload. Finish any backfill that could not run before,
             # for example because the entities did not exist yet.
             series = self.series.get(tank_id)
-            if series and self.backfilled_until.get(tank_id, 0) < last_read:
+            if (
+                self.backfill_states
+                and series
+                and self.backfilled_until.get(tank_id, 0) < last_read
+            ):
                 self._schedule(
                     self._async_backfill_tank(tank_id, series, last_read),
                     f"smart_oil_gauge backfill {tank_id}",
@@ -359,7 +364,7 @@ class SmartOilGaugeDataUpdateCoordinator(
         self.last_read[tank_id] = last_read
         self._update_refill_from_series(tank_id, series)
 
-        if series:
+        if self.backfill_states and series:
             self._schedule(
                 self._async_backfill_tank(tank_id, series, last_read),
                 f"smart_oil_gauge backfill {tank_id}",
@@ -506,6 +511,8 @@ class SmartOilGaugeDataUpdateCoordinator(
         self, tank_id: str, series: Series, last_read: float
     ) -> None:
         """Backfill readings received since the last successful backfill."""
+        if not self.backfill_states:
+            return
         async with self._backfill_lock:
             start = self.backfilled_until.get(tank_id)
             if start is None or start < series[0][0]:
@@ -555,6 +562,8 @@ class SmartOilGaugeDataUpdateCoordinator(
 
         Waits first so the new entities' states are in the recorder.
         """
+        if not self.backfill_states and not self.import_history:
+            return
         await asyncio.sleep(INITIAL_IMPORT_DELAY_S)
         for tank_id, series in list(self.series.items()):
             last_read = self.last_read.get(tank_id)
@@ -571,8 +580,27 @@ class SmartOilGaugeDataUpdateCoordinator(
         ]:
             await self.async_import_history(tank_id)
 
+    def import_running(self, tank_id: str) -> bool:
+        """Return whether a history import is already running for a tank."""
+        return tank_id in self._imports_running
+
     async def async_import_history(self, tank_id: str) -> None:
-        """Download the full CSV history for a tank and write it to the recorder."""
+        """Download the full CSV history for a tank and write it to the recorder.
+
+        Only one import runs per tank at a time; a second request while one is
+        running is ignored.
+        """
+        if tank_id in self._imports_running:
+            _LOGGER.info("History import for tank %s is already running", tank_id)
+            return
+        self._imports_running.add(tank_id)
+        try:
+            await self._async_import_history(tank_id)
+        finally:
+            self._imports_running.discard(tank_id)
+
+    async def _async_import_history(self, tank_id: str) -> None:
+        """Run one history import for a tank."""
         tank = (self.data or {}).get(tank_id)
         if not tank:
             return

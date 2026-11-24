@@ -220,7 +220,7 @@ async def test_integration_backfills_week_on_poll(
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={"username": "u@example.com", "password": "pw"},
-        options={"import_history": False},
+        options={"import_history": False, "backfill_states": True},
     )
     entry.add_to_hass(hass)
     with (
@@ -309,7 +309,7 @@ async def test_integration_csv_history_import(
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={"username": "u@example.com", "password": "pw"},
-        options={"import_history": False},
+        options={"import_history": False, "backfill_states": True},
     )
     entry.add_to_hass(hass)
     export = AsyncMock(return_value=csv_text)

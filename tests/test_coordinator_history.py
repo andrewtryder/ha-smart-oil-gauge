@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -86,7 +87,7 @@ async def _setup(hass: HomeAssistant, tanks, graph=GRAPH, **options):
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={"username": "u@example.com", "password": "pw"},
-        options={"import_history": False, **options},
+        options={"import_history": False, "backfill_states": True, **options},
     )
     entry.add_to_hass(hass)
     get_tanks = patch(f"{CLIENT}.async_get_tanks", return_value=tanks)
@@ -191,12 +192,18 @@ async def test_poll_graph_failure_keeps_snapshot(
 async def test_backfill_disabled_and_waiting(
     hass: HomeAssistant, no_writes, caplog
 ) -> None:
-    """With state backfill off only statistics are written."""
+    """With state backfill off nothing is written to the recorder."""
     states, stats = no_writes
     entry, _, _ = await _setup(hass, [_tank()], backfill_states=False)
     await hass.async_block_till_done()
+    coordinator = entry.runtime_data.coordinator
+    await coordinator.async_refresh()
+    await coordinator._async_backfill_tank(
+        "940670", coordinator.series["940670"], coordinator.last_read["940670"]
+    )
+    await hass.async_block_till_done()
     states.assert_not_awaited()
-    assert stats.await_count == 2
+    stats.assert_not_awaited()
     await hass.config_entries.async_unload(entry.entry_id)
 
     states.return_value = BackfillResult(skipped_entities=["sensor.x"])
@@ -387,11 +394,49 @@ async def test_initial_import_runs_once(hass: HomeAssistant, no_writes) -> None:
     await hass.config_entries.async_unload(entry.entry_id)
 
 
+async def test_defaults_write_nothing(hass: HomeAssistant, no_writes) -> None:
+    """A default install writes no history, imports nothing, has no button."""
+    states, stats = no_writes
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"username": "u@example.com", "password": "pw"},
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(f"{CLIENT}.async_get_tanks", return_value=[_tank()]),
+        patch(f"{CLIENT}.async_get_graph_data", new=AsyncMock(return_value=GRAPH)),
+        patch.object(coord_mod, "INITIAL_IMPORT_DELAY_S", 0),
+        patch.object(
+            coord_mod.SmartOilGaugeDataUpdateCoordinator,
+            "_async_import_history",
+            new=AsyncMock(),
+        ) as run,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        coordinator = entry.runtime_data.coordinator
+        assert coordinator.backfill_states is False
+        assert coordinator.import_history is False
+        assert coordinator.series["940670"]
+        await coordinator.async_start_initial_import()
+        await hass.async_block_till_done()
+    states.assert_not_awaited()
+    stats.assert_not_awaited()
+    run.assert_not_awaited()
+    assert hass.states.get("button.test_tank_import_history") is None
+    await hass.config_entries.async_unload(entry.entry_id)
+
+
 async def test_import_button(hass: HomeAssistant, no_writes) -> None:
     """Pressing Import history starts an import for that tank."""
-    entry, _, _ = await _setup(hass, [_tank()])
-    coordinator = entry.runtime_data.coordinator
-    with patch.object(coordinator, "async_import_history", new=AsyncMock()) as run:
+    with patch.object(
+        coord_mod.SmartOilGaugeDataUpdateCoordinator,
+        "_async_import_history",
+        new=AsyncMock(),
+    ) as run:
+        entry, _, _ = await _setup(hass, [_tank()], import_history=True)
+        await hass.async_block_till_done()
+        run.assert_awaited_once_with("940670")
         await hass.services.async_call(
             "button",
             "press",
@@ -399,8 +444,40 @@ async def test_import_button(hass: HomeAssistant, no_writes) -> None:
             blocking=True,
         )
         await hass.async_block_till_done()
-    run.assert_awaited_once_with("940670")
+        assert run.await_count == 2
+        coordinator = entry.runtime_data.coordinator
+        coordinator._imports_running.add("940670")
+        await hass.services.async_call(
+            "button",
+            "press",
+            {"entity_id": "button.test_tank_import_history"},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+        assert run.await_count == 2
     await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_import_history_single_run(hass: HomeAssistant, caplog) -> None:
+    """A second import for the same tank while one is running is ignored."""
+    coordinator = SmartOilGaugeDataUpdateCoordinator(hass, MagicMock(), 1, "x")
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def _slow(tank_id: str) -> None:
+        started.set()
+        await release.wait()
+
+    with patch.object(coordinator, "_async_import_history", side_effect=_slow) as run:
+        first = hass.async_create_task(coordinator.async_import_history("1"))
+        await started.wait()
+        assert coordinator.import_running("1")
+        await coordinator.async_import_history("1")
+        assert "already running" in caplog.text
+        release.set()
+        await first
+    assert run.await_count == 1
+    assert not coordinator.import_running("1")
 
 
 async def test_older_refill_does_not_replace_newer(hass: HomeAssistant) -> None:

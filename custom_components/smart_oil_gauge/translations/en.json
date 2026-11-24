@@ -39,16 +39,16 @@
     "step": {
       "init": {
         "title": "Smart Oil Gauge Options",
-        "description": "Configure polling and history backfill for Smart Oil Gauge.",
+        "description": "Configure polling for Smart Oil Gauge. The history options are experimental and off by default.",
         "data": {
           "update_interval_hours": "Polling Interval (Hours)",
-          "backfill_states": "Backfill sensor history",
-          "import_history": "Import history when first set up"
+          "backfill_states": "Backfill sensor history (experimental)",
+          "import_history": "Import full portal history (experimental)"
         },
         "data_description": {
           "update_interval_hours": "How often to check the portal for a new upload (1-24 hours). Checking the portal does not use the gauge's battery. Missed hourly readings are filled in at their real times, so a longer interval only delays when new readings appear.",
-          "backfill_states": "Write the hourly readings the gauge uploads in batches into Home Assistant's state history at their real times, so the built-in history graphs show every hour. Long-term statistics are always updated.",
-          "import_history": "On first setup, download the gauge's full hourly history from the portal and add it to Home Assistant. You can run it again at any time with the Import history button."
+          "backfill_states": "Off by default. When on, the hourly readings the gauge uploads in batches are written into Home Assistant's state history and long-term statistics at their real times. This writes to the recorder database directly using Home Assistant internals, not a supported API; keep backups.",
+          "import_history": "Off by default. When on, the gauge's full hourly history is downloaded from the portal once and added to long-term statistics (and to state history if backfill is also on), and an Import history button is added to re-run it."
         }
       }
     }
