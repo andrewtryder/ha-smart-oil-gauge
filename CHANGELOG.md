@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.6.1...v1.7.0) (2026-11-24)
+
+
+### Features
+
+* hourly history backfill and history import (experimental, off by default) and slow-refill detection ([#103](https://github.com/andrewtryder/ha-smart-oil-gauge/issues/103)) ([a015c8e](https://github.com/andrewtryder/ha-smart-oil-gauge/commit/a015c8e496a813bf4685f0d7f9165358d09ddc2c))
+
 ## [1.6.1](https://github.com/andrewtryder/ha-smart-oil-gauge/compare/v1.6.0...v1.6.1) (2026-08-01)
 
 
