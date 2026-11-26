@@ -147,12 +147,12 @@ def test_detect_refills_closes_and_ignores_noise() -> None:
     small = [(i * 3600.0, 70.0 + (5.0 if i >= 5 else 0.0)) for i in range(20)]
     assert h.detect_refills(small) == []
 
-    levels = [60.0] * 5 + [100.0, 140.0, 160.0] + [160.0] * 10
+    levels = [60.0] * 8 + [100.0, 140.0, 160.0] + [160.0] * 10
     events = h.detect_refills([(i * 3600.0, g) for i, g in enumerate(levels)])
     assert len(events) == 1
     assert events[0].amount == 100.0
     assert events[0].in_progress is False
-    assert events[0].peak_ts == 7 * 3600.0
+    assert events[0].peak_ts == 10 * 3600.0
 
 
 def test_hours_ago() -> None:
@@ -182,3 +182,41 @@ def test_slow_refill_settles_when_level_levels_off() -> None:
     assert not final.in_progress
     # Measured to the settled level (276.69), not the 277.58 blip.
     assert final.amount == pytest.approx(215.6)
+
+
+def test_refill_not_reported_again_as_it_ages_out_of_the_window() -> None:
+    """Real data: an old refill's tail is not reported as a new refill.
+
+    As the 8-day window slides past the start of the 11/17 delivery, only the
+    tail of the slow climb remains in view; it must not count again.
+    """
+    lines = (FIXTURES / "refill_window_series.csv").read_text().split()[1:]
+    series = [(float(t), float(g)) for t, g in (line.split(",") for line in lines)]
+
+    def detected(local: str) -> list[h.RefillEvent]:
+        now = datetime.fromisoformat(local).replace(tzinfo=NY).timestamp()
+        return h.detect_refills([p for p in series if now - 8 * 86400 < p[0] <= now])
+
+    start = datetime(2026, 11, 17, 15, 55, 35, tzinfo=UTC)
+    for when in ("2026-11-19T20:00", "2026-11-24T12:00"):
+        events = detected(when)
+        assert [e.start for e in events] == [start]
+    # These used to report 186.5, 91.0 and 31.9 gallons "refills".
+    for when in ("2026-11-25T12:21", "2026-11-26T00:23", "2026-11-26T12:24"):
+        assert detected(when) == []
+
+
+def test_rise_needs_flat_history_before_it() -> None:
+    """A rise at the very start of the data, or after a climb, is not a refill."""
+    climbing = [(i * 3600.0, 100.0 + 5 * i) for i in range(10)] + [
+        ((10 + i) * 3600.0, 150.0) for i in range(10)
+    ]
+    assert h.detect_refills(climbing) == []
+    flat_then_fill = (
+        [(i * 3600.0, 60.0) for i in range(8)]
+        + [((8 + i) * 3600.0, 60.0 + 20 * (i + 1)) for i in range(4)]
+        + [((12 + i) * 3600.0, 140.0) for i in range(8)]
+    )
+    events = h.detect_refills(flat_then_fill)
+    assert len(events) == 1
+    assert events[0].amount == 80.0

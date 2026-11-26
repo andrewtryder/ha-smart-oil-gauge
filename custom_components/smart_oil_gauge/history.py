@@ -36,6 +36,10 @@ REFILL_START_RISE = 3.0
 REFILL_SETTLE_EPS = 1.5
 REFILL_SETTLE_READINGS = 6
 REFILL_BASELINE_READINGS = 3
+# The readings just before a refill must be roughly flat (within normal
+# sensor noise) for it to count. A level that is already climbing at the
+# start of the data is the tail of an older refill, not a new one.
+REFILL_BASELINE_MAX_SPREAD = 3.0
 
 
 def merge_series(*sources: Iterable[Point]) -> Series:
@@ -333,6 +337,14 @@ def detect_refills(
     k = 1
     while k < n:
         if gal[k] - gal[k - 1] <= REFILL_START_RISE:
+            k += 1
+            continue
+        if k < REFILL_SETTLE_READINGS or (
+            max(gal[k - REFILL_BASELINE_READINGS : k])
+            - min(gal[k - REFILL_BASELINE_READINGS : k])
+            > REFILL_BASELINE_MAX_SPREAD
+        ):
+            # Not enough flat history before the rise to tell where it began.
             k += 1
             continue
         base_slice = gal[max(0, k - REFILL_BASELINE_READINGS) : k]

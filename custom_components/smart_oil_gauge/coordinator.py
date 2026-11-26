@@ -176,6 +176,7 @@ class SmartOilGaugeDataUpdateCoordinator(
                 "amount": amount,
                 "timestamp": ts,
                 "in_progress": refill.get("in_progress") is True,
+                "settled_ts": parse_finite_float(refill.get("settled_ts")),
             }
         return clean
 
@@ -210,6 +211,7 @@ class SmartOilGaugeDataUpdateCoordinator(
                     "amount": refill.get("amount"),
                     "timestamp": ts.isoformat() if isinstance(ts, datetime) else None,
                     "in_progress": bool(refill.get("in_progress", False)),
+                    "settled_ts": refill.get("settled_ts"),
                 }
             await self._store.async_save(
                 {
@@ -386,15 +388,25 @@ class SmartOilGaugeDataUpdateCoordinator(
         current = self.last_refills.get(tank_id)
         if current is not None:
             current_ts = current.get("timestamp")
-            if isinstance(current_ts, datetime) and (
-                event.start.timestamp() < current_ts.timestamp() - REFILL_SAME_EVENT_S
-            ):
-                # An older event than the one already known.
-                return
+            if isinstance(current_ts, datetime):
+                start = current_ts.timestamp()
+                same_event = abs(event.start_ts - start) <= REFILL_SAME_EVENT_S
+                if not same_event:
+                    if event.start_ts < start:
+                        # An older event than the one already known.
+                        return
+                    settled = current.get("settled_ts")
+                    if current.get("in_progress") or (
+                        isinstance(settled, int | float) and event.start_ts < settled
+                    ):
+                        # Starts while the known refill was still rising: part
+                        # of that refill, not a new one.
+                        return
         self.last_refills[tank_id] = {
             "amount": event.amount,
             "timestamp": event.start,
             "in_progress": event.in_progress,
+            "settled_ts": event.peak_ts,
         }
 
     def _entity_ids(self, tank_id: str) -> dict[str, str]:

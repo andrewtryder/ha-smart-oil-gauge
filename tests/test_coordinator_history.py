@@ -518,3 +518,42 @@ async def test_keep_days_reads_recorder_setting(hass: HomeAssistant) -> None:
         return_value=MagicMock(keep_days=45),
     ):
         assert _recorder_keep_days(hass) == 45
+
+
+async def test_refill_tail_does_not_replace_known_refill(hass: HomeAssistant) -> None:
+    """A rise that starts while the known refill was still rising is ignored."""
+    coordinator = SmartOilGaugeDataUpdateCoordinator(hass, MagicMock(), 1, "x")
+    known = datetime(2026, 11, 17, 15, 55, tzinfo=UTC)
+    settled = known.timestamp() + 52 * 3600
+    coordinator.last_refills["1"] = {
+        "amount": 215.6,
+        "timestamp": known,
+        "in_progress": False,
+        "settled_ts": settled,
+    }
+    # A "refill" detected inside the known one (before it settled).
+    base = known.timestamp() + 3 * 3600 - 8 * 3600
+    inside = (
+        [(base + i * 3600, 60.0) for i in range(8)]
+        + [(base + (8 + i) * 3600, 60.0 + 20 * (i + 1)) for i in range(4)]
+        + [(base + (12 + i) * 3600, 140.0) for i in range(8)]
+    )
+    coordinator._update_refill_from_series("1", inside)
+    assert coordinator.last_refills["1"]["amount"] == 215.6
+
+    # The same rule while the known refill is still marked in progress.
+    coordinator.last_refills["1"]["in_progress"] = True
+    coordinator._update_refill_from_series("1", inside)
+    assert coordinator.last_refills["1"]["amount"] == 215.6
+
+    # A genuinely new refill after it settled replaces it.
+    coordinator.last_refills["1"]["in_progress"] = False
+    later = settled + 5 * 86400
+    new = (
+        [(later + i * 3600, 200.0) for i in range(8)]
+        + [(later + (8 + i) * 3600, 200.0 + 25 * (i + 1)) for i in range(3)]
+        + [(later + (11 + i) * 3600, 275.0) for i in range(8)]
+    )
+    coordinator._update_refill_from_series("1", new)
+    assert coordinator.last_refills["1"]["amount"] == 75.0
+    assert coordinator.last_refills["1"]["settled_ts"] > settled
