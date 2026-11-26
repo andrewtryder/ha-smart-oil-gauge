@@ -557,3 +557,24 @@ async def test_refill_tail_does_not_replace_known_refill(hass: HomeAssistant) ->
     coordinator._update_refill_from_series("1", new)
     assert coordinator.last_refills["1"]["amount"] == 75.0
     assert coordinator.last_refills["1"]["settled_ts"] > settled
+
+
+async def test_full_history_corrects_a_wrong_stored_refill(hass: HomeAssistant) -> None:
+    """The full-history import replaces a wrong stored refill with the truth."""
+    coordinator = SmartOilGaugeDataUpdateCoordinator(hass, MagicMock(), 1, "x")
+    wrong = datetime(2026, 11, 18, 21, 59, tzinfo=UTC)
+    coordinator.last_refills["1"] = {
+        "amount": 31.9,
+        "timestamp": wrong,
+        "in_progress": False,
+        "settled_ts": wrong.timestamp() + 7 * 3600,
+    }
+    lines = (FIXTURES / "refill_window_series.csv").read_text().split()[1:]
+    full = [(float(t), float(g)) for t, g in (line.split(",") for line in lines)]
+    coordinator._update_refill_from_series("1", full)
+    assert coordinator.last_refills["1"]["amount"] == 31.9  # not authoritative
+    coordinator._update_refill_from_series("1", full, full_history=True)
+    assert coordinator.last_refills["1"]["amount"] == 215.6
+    assert coordinator.last_refills["1"]["timestamp"] == datetime(
+        2026, 11, 17, 15, 55, 35, tzinfo=UTC
+    )

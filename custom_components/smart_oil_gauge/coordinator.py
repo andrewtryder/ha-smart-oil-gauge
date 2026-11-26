@@ -379,13 +379,19 @@ class SmartOilGaugeDataUpdateCoordinator(
         else:
             self.hass.async_create_background_task(coro, name)
 
-    def _update_refill_from_series(self, tank_id: str, series: Series) -> None:
-        """Update the last refill from the newest refill event in a series."""
+    def _update_refill_from_series(
+        self, tank_id: str, series: Series, *, full_history: bool = False
+    ) -> None:
+        """Update the last refill from the newest refill event in a series.
+
+        With ``full_history`` (the portal's complete export) the newest event
+        found is taken as the truth, which also corrects a wrong stored one.
+        """
         events = detect_refills(series)
         if not events:
             return
         event = events[-1]
-        current = self.last_refills.get(tank_id)
+        current = None if full_history else self.last_refills.get(tank_id)
         if current is not None:
             current_ts = current.get("timestamp")
             if isinstance(current_ts, datetime):
@@ -636,7 +642,7 @@ class SmartOilGaugeDataUpdateCoordinator(
         if not full:
             return
 
-        self._update_refill_from_series(tank_id, full)
+        self._update_refill_from_series(tank_id, full, full_history=True)
         self.async_update_listeners()
 
         end_ts = self.last_read.get(tank_id, full[-1][0])
